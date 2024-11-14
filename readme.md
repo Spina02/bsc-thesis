@@ -2,10 +2,10 @@
 This repository contains the LaTeX files for my bachelor's degree thesis in computer engineering. The thesis focuses on aligning, denoising, and stacking lunar images using traditional techniques and unsharp masking based on deep learning.
 
 ## Structure
-- `Thesis.tex`: The main LaTeX file which compiles the entire thesis.
-- `chapters/`: Directory containing individual chapter files.
-- `figures/`: Directory for storing figures and images used in the thesis.
-- `references.bib`: Bibliography file with references used in the thesis.
+- `src/Thesis.tex`: The main LaTeX file which compiles the entire thesis.
+- `src/chapters/`: Directory containing individual chapter files.
+- `src/references.bib`: Bibliography file with references used in the thesis.
+- `assets/`: Directory for storing figures and images used in the thesis.
 
 ## Compilation
 To compile the thesis, use the following command:
