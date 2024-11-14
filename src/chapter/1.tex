@@ -2,7 +2,7 @@
 
 \section{Evoluzione dell'astrofotografia} \label{sec:evolution}
 
-L'\textbf{\href{https://it.wikipedia.org/wiki/Astrofotografia}{astrofotografia}} è una disciplina che si occupa di fotografare oggetti celesti come stelle, pianeti, galassie e nebulose. Questa pratica ha radici antiche, risalenti al XIX secolo: nel 1822 fu scattata la prima foto nella storia da Nicéphore Niépce, e già nel 1840 fu catturata la prima immagine della luna da John William Draper, segnando l'inizio di una nuova era nell'osservazione astronomica. Nel 1850, William Cranch Bond e John Adams Whipple scattarono la prima fotografia di una stella, \textit{Vega}, con un'esposizione di 1000 secondi.
+L'\textbf{\href{https://it.wikipedia.org/wiki/Astrofotografia}{astrofotografia}} è una disciplina che si occupa di fotografare oggetti celesti come stelle, pianeti, galassie e nebulose. Questa pratica ha radici antiche, risalenti al XIX secolo: nel 1822 fu scattata la prima foto nella storia da Nicéphore Niépce, e già nel 1840 fu catturata la prima immagine della Luna da John William Draper, segnando l'inizio di una nuova era nell'osservazione astronomica. Nel 1850, William Cranch Bond e John Adams Whipple scattarono la prima fotografia di una stella, \textit{Vega}, con un'esposizione di 1000 secondi.
 
 \subsection{Breve storia e sviluppo tecnologico} \label{subsec:history}
 
@@ -32,7 +32,7 @@ Esistono diversi telescopi spaziali, come l'\textit{\href{https://hubblesite.org
 Nell'astrofotografia tradizionale si utilizzano principalmente tre tipi di strumenti:
 
 \begin{itemize}
-    \item \textbf{Telescopi}: I telescopi sono fondamentali nell'astrofotografia; ne esistono di diversi tipi, tra cui rifrattori, riflettori e catadiottrici, ciascuno con caratteristiche specifiche. I telescopi moderni variano da piccoli modelli portatili a grandi strutture professionali, come l'\textit{\href{https://elt.eso.org/}{ELT}} (Extremely Large Telescope), con uno specchio principale di ben $39 \text{m}$ di diametro, che è ancora in costruzione ma si prevede diventerà operativo entro il 2027 \cite{elt}. La scelta del telescopio dipende dall'oggetto celeste da osservare e dal livello di dettaglio desiderato, oltre che dal budget disponibile.
+    \item \textbf{Telescopi}: I telescopi sono fondamentali nell'astrofotografia; ne esistono di diversi tipi, tra cui rifrattori, riflettori e catadiottrici, ciascuno con caratteristiche specifiche. I telescopi moderni variano da piccoli modelli portatili a grandi strutture professionali, come l'\textit{\href{https://elt.eso.org/}{ELT}} (Extremely Large Telescope), con uno specchio principale di ben $ 39 \text{m} $ di diametro, che è ancora in costruzione ma si prevede diventerà operativo entro il 2027 \cite{elt}. La scelta del telescopio dipende dall'oggetto celeste da osservare e dal livello di dettaglio desiderato, oltre che dal budget disponibile.
 
     \item \textbf{Fotocamere}: Le fotocamere \textit{\textbf{CCD}} (Charge-Coupled Device) sono ampiamente utilizzate in ambito astronomico per la loro alta sensibilità e basso \hyperref[sec:noise]{rumore elettronico}. Negli ultimi anni, le fotocamere \textit{\textbf{CMOS}} (Complementary Metal-Oxide-Semiconductor) hanno guadagnato popolarità in quanto più performanti e più accessibili economicamente. Tali fotocamere offrono elevate risoluzioni, velocità di lettura più rapide e buona \href{https://it.wikipedia.org/wiki/Efficienza_quantica}{\textit{efficienza quantica}}, rendendole adatte sia per l'uso professionale che amatoriale \cite{image_processing}.
     
@@ -83,4 +83,25 @@ La qualità delle immagini astronomiche è influenzata da diversi tipi di rumore
 
 \end{itemize}
 
+\section{La Luna} \label{sec:moon}
+
+Tra i corpi celesti più affascinanti e accessibili nell'astrofotografia spicca sicuramente la \textbf{Luna}. Grazie alla sua vicinanza alla Terra, alla sua luminosità e alle sue dimensioni apparenti relativamente grandi, è possibile catturare immagini lunari di alta qualità anche in assenza di strumentazione professionale. Fotografare la Luna rispetto ad altri corpi celesti presenta diversi vantaggi:
+
+\begin{itemize}
+    \item \textbf{Rotazione sincrona}: La Luna mostra sempre la stessa faccia verso la Terra a causa della sua \textit{rotazione sincrona}, ovvero il suo periodo di rotazione attorno al proprio asse è uguale al periodo di rivoluzione attorno alla Terra (circa 27,3 giorni). Questo fenomeno, dovuto alla \textit{risonanza mareale}, comporta diverse semplificazioni nell'elaborazione delle immagini, eliminando la necessità di processi di derotazione \cite{nasa_moon_orbit}.
+    
+    \item \textbf{Luminosità elevata}: La Luna è l'oggetto celeste più luminoso nel cielo notturno. Questa luminosità consente di utilizzare tempi di esposizione più brevi rispetto ad altri oggetti astronomici (da $1/250$ a $1/100$ di secondo, a seconda della percentuale di illuminazione, contro tempi fino a $20$-$30$ secondi per oggetti dello spazio profondo), riducendo gli effetti del \hyperref[sec:noise]{rumore elettronico} e del movimento apparente.
+    
+    \item \textbf{Facilità di localizzazione}: Essendo facilmente visibile ad occhio nudo, la Luna non richiede sistemi di puntamento sofisticati o montature equatoriali per essere fotografata. Un semplice treppiede è sufficiente per stabilizzare la fotocamera durante la cattura delle immagini.
+\end{itemize}
+
+Nell'astrofotografia planetaria in generale, quando il soggetto non è la Luna, i pianeti sono notevolmente distanti dalla Terra, e piccole perturbazioni dell'atmosfera possono causare rumore e artefatti fastidiosi. È possibile ovviare a questo problema registrando dei video (piuttosto che singole immagini) e rimuovere tali artefatti tramite una tecnica chiamata \textit{Lucky Imaging}, combinata con tecniche di \textit{derotazione} per mitigare l'effetto della rotazione del pianeta attorno al proprio asse.
+
+L'astrofotografia lunare a livelli professionali consiste spesso nello scattare immagini che catturano sezioni diverse della Luna; queste immagini vengono prima processate singolarmente e poi unite mediante tecniche di \textit{stitching}. Un'altra tecnica molto diffusa è quella utilizzata per ottenere le cosiddette \textit{Mineral Moon}: si eseguono diversi scatti applicando filtri a banda stretta sui telescopi, per poi elaborare i canali RGB singolarmente, facendo risaltare la presenza di minerali diversi sulla superficie lunare \cite{legault_astrophoto}.
+
+Fotografare la Luna presenta comunque delle sfide. Essa è caratterizzata da un elevato contrasto tra le aree illuminate e quelle in ombra, specialmente durante le fasi parziali, rendendo difficile ottenere un'esposizione bilanciata che catturi dettagli sia nelle zone chiare che in quelle scure \cite{sheehan_epic_moon}. Nonostante la sua vicinanza, l'atmosfera terrestre influenza la qualità delle immagini lunari, introducendo turbolenze (\textit{seeing}), dispersione e attenuazione della luce. Questi effetti possono ridurre la nitidezza e il contrasto delle fotografie \cite{sheehan_epic_moon}. Infine, sebbene la luminosità della Luna consenta di fotografarla anche da aree urbane, l'inquinamento luminoso può ancora influenzare la qualità delle immagini, specialmente quando si cerca di catturare dettagli più fini o durante le fasi meno illuminate.
+
+Nel contesto di questo progetto, sono state scattate personalmente immagini della Luna utilizzando una \textbf{Fujifilm FinePix S1}, una fotocamera bridge dotata di uno zoom ottico fino a $50 \times$. Senza l'ausilio di telescopi o montature specializzate, ma semplicemente con l'utilizzo di un treppiede standard, è stato possibile catturare immagini dettagliate della superficie lunare.
+
+Questa scelta strumentale evidenzia come, grazie alle moderne tecnologie e alle tecniche di elaborazione delle immagini, sia possibile ottenere risultati di qualità anche con attrezzature relativamente modeste. Le immagini acquisite sono state utilizzate per testare e validare gli algoritmi sviluppati nel corso del progetto, dimostrando l'efficacia delle metodologie proposte nell'ottimizzazione di fotografie lunari.
 \cleardoublepage
