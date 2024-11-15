@@ -317,6 +317,7 @@ TSWLatexianTemp*
 /books
 /papers
 
-# My own dir
+# My own dir and files
 notes/
 ref/
+!src/Thesis.pdf
