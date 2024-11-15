@@ -1,5 +1,9 @@
+
+
 ## Overview
 This repository contains the LaTeX files for my bachelor's degree thesis in computer engineering. The thesis focuses on aligning, denoising, and stacking lunar images using traditional techniques and unsharp masking based on deep learning.
+
+The PDF to my BSc Thesis can be found [here](<https://raw.githubusercontent.com/Spina02/Thesis/main/src/Thesis.pdf>).
 
 ## Structure
 - `src/Thesis.tex`: The main LaTeX file which compiles the entire thesis.
