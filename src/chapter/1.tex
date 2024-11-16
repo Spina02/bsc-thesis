@@ -61,9 +61,9 @@ I software principalmente utilizzati, quali \href{https://pixinsight.com/}{\text
 \item \textbf{Stacking delle immagini}: Lo \textit{stacking} (\textit{"impilamento"}) combina multiple esposizioni per ottenere un'unica immagine finale ottimizzandone il rapporto segnale-rumore. Questa tecnica riduce il rumore casuale e mette in evidenza dettagli deboli non visibili in singole esposizioni. Metodi come il \textbf{\textit{Weighted Average Stacking}} assegnano un peso a ciascuna immagine in base ad un criterio prefissato, per ottenere in seguito un'immagine data dalla media ponderata dei valori dei singoli frames in input (più nel dettaglio nella \cref{sec:stacking}).
 \end{itemize}
 
-\section{Rumori e artefatti nelle immagini astronomiche} \label{sec:noise}
+\section{Rumore e artefatti nelle immagini astronomiche} \label{sec:noise}
 
-La qualità delle immagini astronomiche è influenzata da diversi tipi di rumore e artefatti, che devono essere mitigati per ottenere risultati ottimali:
+La qualità delle immagini astronomiche è influenzata da diversi tipi di rumore e artefatti, che devono essere mitigati per ottenere risultati ottimali (vedremo nella \cref{subsec:denoising} come ridurli). I principali tipi di rumore e artefatti includono:
 
 \begin{itemize}
     \item \textbf{Rumore termico}: Il rumore termico (\textit{Dark Current}) è generato dall'agitazione termica degli elettroni all'interno del sensore della fotocamera, producendo un segnale anche in assenza di luce. Questo tipo di rumore aumenta con la temperatura del sensore ed è particolarmente significativo nelle lunghe esposizioni. Per ridurlo, molti sensori astronomici sono raffreddati tramite \textit{sistemi termoelettrici} o \textit{criogenici}. La sottrazione dei \hyperref[subsec:dark]{\textit{dark frames}} durante la calibrazione permette di correggere questo rumore.

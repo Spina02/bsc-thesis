@@ -13,9 +13,7 @@ I \textbf{bias frames} son scatti acquisiti con il tempo di esposizione più bre
 Per correggere questo rumore si calcola il cosiddetto \textbf{master bias} combinando i diversi bias frames, generalmente calcolandone la media. Il master bias viene poi sottratto da tutte le immagini acquisite, inclusi gli altri frame di calibrazione.
 
 \begin{algorithm}[H]
-    \caption{Calcolo del master bias} \label{alg:bias}
-    \textbf{Input:} \Comment{Lista di bias frames} \\
-    \textbf{Ouput:} \Comment{Master bias calcolato}
+    \caption{\texttt{- Calcolo del master bias}:\\ Data la lista di bias frames $B_f$, l'algoritmo calcola il master bias $M_b$} \label{alg:bias}
     \begin{algorithmic}[1]
         \Function{calculate\_master\_bias}{$B_f$}
             \State $N \gets$ \text{numero di bias frames}
@@ -41,12 +39,9 @@ I \textbf{dark frames}, acquisiti con stessi ISO e tempi di cattura dei light fr
 Per correggere il rumore termico, si calcola il \textbf{master dark} combinando i diversi dark frames, generalmente calcolandone la media. Il master dark viene poi sottratto ai light frames e ai flat fames. È importante sottrarre il master bias dai dark frames prima di calcolare il master dark, per evitare di sommare due volte il rumore di bias.
 
 \begin{algorithm}[H]
-    \caption{Calcolo del Master Dark}
-    \textbf{Input:} $D_f$ \Comment{Lista di dark frames} \\
-    \textbf{Ouput:} $M_d$ \Comment{Master dark calcolato}
+    \caption{\texttt{- Calcolo del Master Dark}:\\ Data la lista di dark frames $D_f$ e il master bias $M_b$, l'algoritmo calcola il master dark $M_d$.} \label{alg:dark}
     \begin{algorithmic}[1]
-
-        \Function{calculate\_master\_dark}{$D_f$}
+        \Function{calculate\_master\_dark}{$D_f$, $M_b$}
             \State $N \gets$ \text{numero di dark frames}
             \State $M_d \gets 0$
             \For{$i \gets 1$ to $N$}     
@@ -71,11 +66,9 @@ I \textbf{flat frames} sono scatti acquisiti fotografando una sorgente di luce u
 Per correggere queste imperfezioni si calcula un \textbf{master flat} combinando i diversi flat frames, solitamente attraverso la media. Prima di calcolare il master flat, è necessario sottrarre sia il master bias che il master dark dai flat frames. Una volta calcolato il master flat, questo viene normalizzato dividendolo per il valore medio dei suoi pixel. Il master flat viene poi utilizzato per normalizzare le immagini scientifiche, dividendo ogni pixel dell'immagine per il corrispondente valore nel master flat.
 
 \begin{algorithm}[H]
-    \caption{Calcolo del Master Flat}
-    \textbf{Input:} $F_f$ \Comment{Lista di flat frames} \\
-    \textbf{Ouput:} $M_f$ \Comment{Master flat calcolato}
+    \caption{\texttt{- Calcolo del Master Flat}:\\ Data la lista di flat frames $F_f$, il master bias $M_b$ e il master dark $M_d$, l'algoritmo calcola il master flat normalizzato $M_f$.} \label{alg:flat}
     \begin{algorithmic}[1]
-        \Function{calculate\_master\_flat}{$F_f$}
+        \Function{calculate\_master\_flat}{$F_f$, $M_b$, $M_d$}
             \State $N \gets$ \text{numero di flat frames}
             \State $M_f \gets 0$
             \For{$i \gets 1$ to $N$}
@@ -101,12 +94,7 @@ Nel contesto di questo progetto, i flat frames non sono stati acquisiti per due 
 Il processo completo di calibrazione applica in sequenza le correzioni con i master frames; si sottraggono master bias e master dark e si divide per il master flat:
 
 \begin{algorithm}[H]
-    \caption{Calibrazione di un'immagine}
-    \textbf{Input:} $Img$ \Comment{Immagine da calibrare} \\
-    \phantom{Input: } $M_b$ \Comment{Master bias} \\
-    \phantom{Input: } $M_d$ \Comment{Master dark} \\
-    \phantom{Input: } $M_f$ \Comment{Master flat} \\
-    \textbf{Ouput:} $Out$ \Comment{Immagine calibrata}
+    \caption{\texttt{- Calibrazione di un'immagine}:\\ Data un'immagine $Img$ e i master frames $M_b$, $M_d$ e $M_f$, l'algoritmo calcola l'immagine calibrata $Out$.} \label{alg:calibration}
     \begin{algorithmic}[1]
         \Function{calibrate\_image}{$Img, M_b, M_d, M_f$}
             \State $Out \gets \dfrac {Img - M_b - M_d} {M_f}$
@@ -125,57 +113,55 @@ Questo processo (illustrato in figura \ref{fig:calibration})  permette di ottene
 
 \begin{figure} [H]
     \centering
-    \includegraphics[scale = 0.35]{../assets/calibration_procedure.jpg}
+    \includegraphics[scale = 0.45]{../assets/calibration_procedure.jpg}
     \captionsetup{justification=centering}
     \caption{Illustrazione schematica dell'uso di immagini di calibrazione \cite{calibration_img}} \label{fig:calibration}
 \end{figure}
 
 \section{Allineamento delle immagini} \label{sec:alignment}
 
-Per migliorare ulteriormente il rapporto segnale-rumore e aumentare la nitidezza dei dettagli, è comune combinare più immagini della stessa scena attraverso tecniche di \textit{stacking}. Prima di poter combinare le immagini, è necessario allinearle correttamente per compensare le differenze di rotazione, traslazione e scala tra le immagini. Queste differenze possono essere causate da errori di puntamento, da movimenti del terreno o da errori di montaggio. L'allineamento delle immagini può essere eseguito manualmente, ma è preferibile utilizzare algoritmi automatici per garantire una maggiore precisione e riproducibilità.
-
-L'allineamento delle immagini si basa sull'identificazione di punti caratteristici comuni tra le immagini e sul calcolo delle trasformazioni geometriche necessarie per sovrapporle perfettamente (nel nostro caso \hyperref[subsec:homography]{trasformazioni omografiche}).
+L'allineamento delle immagini è un passaggio cruciale nell'elaborazione delle immagini lunari, necessario per compensare eventuali spostamenti o rotazioni tra gli scatti e per combinare efficacemente più immagini tramite tecniche di \textit{stacking}. Questo processo si basa sull'identificazione di punti caratteristici comuni tra le immagini e sul calcolo delle trasformazioni geometriche necessarie (nel nostro caso \hyperref[subsec:homography]{trasformazioni omografiche}) per sovrapporle perfettamente. L'allineamento delle immagini può essere eseguito manualmente, ma è preferibile utilizzare algoritmi automatici per garantire una maggiore precisione e riproducibilità.
 
 \subsection{Feature Detection e Matching ORB, SIFT e SURF} \label{subsec:feature_detectoion}
 
-Gli algoritmi di \textit{feature detection} e \textit{matching} identificano punti di interesse nei singoli scatti (come bordi, angoli o altre caratteristiche distintive) e li mettono in corrispondenza con quelli di immagini diverse.
+Gli algoritmi di \textit{feature detection} e \textit{matching} individuano punti di interesse nei distintivi nelle immagini, come bordi, angoli o altre caratteristiche uniche, e calcolando descrittori che rappresentano l'intensità locale attorno a ciascun punto. Successivamente, i descrittori vengono confrontati per trovare corrispondenze tra i punti di interesse delle diverse immagini, consentendo di determinare le trasformazioni geometriche necessarie per allineare le immagini.
 
-I principali algoritmi di feature detection e matching sono ORB (Oriented FAST and Rotated BRIEF), SIFT (Scale-Invariant Feature Transform) e SURF (Speeded-Up Robust Features). Questi algoritmi sono in grado di identificare punti di interesse invarianti rispetto a rotazioni, traslazioni e scalature, e sono particolarmente adatti per l'allineamento di immagini astronomiche.
+Tra i vari algoritmi di feature detection e matching disponibili, tre si distinguono per la loro efficacia e diffusione: ORB (Oriented FAST and Rotated BRIEF), SIFT (Scale-Invariant Feature Transform) e SURF (Speeded-Up Robust Features), i quali sono in grado di identificare punti di interesse invarianti rispetto a rotazioni, traslazioni e scalature, e sono particolarmente adatti per l'allineamento di immagini astronomiche.
 
 \begin{itemize}
-    \item \textbf{SIFT} (Scale-Invariant Feature Transform): è noto per la sua elevata accuratezza e robustezza a cambiamenti di scala, rotazione e illuminazione. L'algoritmo identifica i keypoints costruendo una piramide di immagini a diverse scale e cercando i massimi locali. L'orientamento di ogni punto chiave viene determinato analizzando gli istogrammi dell'orientamento del gradiente nell'intorno del punto stesso. Un descrittore SIFT ha generalmente 128 dimensioni e viene calcolato campionando gli orientamenti del gradiente in una griglia 16x16 attorno al punto chiave. Questo algoritmo è molto preciso, ma anche computazionalmente costoso, il che può essere problematico per applicazioni in tempo reale o con grandi volumi di dati, oltre al fatto che è coperto da brevetti che ne limitano l'utilizzo \cite{sift}.
+    \item \textbf{SIFT} (Scale-Invariant Feature Transform): è noto per la sua elevata accuratezza e robustezza a cambiamenti di scala, rotazione e illuminazione. L'algoritmo identifica i keypoints costruendo una piramide di immagini a diverse scale e cercando i massimi locali. L'orientamento di ogni keypoint viene determinato analizzando gli istogrammi dell'orientamento del gradiente nell'intorno del punto stesso. Un descrittore SIFT ha generalmente 128 dimensioni e viene calcolato campionando gli orientamenti del gradiente in una griglia 16x16 attorno al punto chiave. Questo algoritmo è molto preciso, ma anche computazionalmente costoso, il che può essere problematico per applicazioni in tempo reale o con grandi volumi di dati \cite{sift}.
     
     \item \textbf{SURF} (Speeded-Up Robust Features): è stato sviluppato come alternativa più veloce a SIFT. Utilizza un'approssimazione del determinante dell'Hessiana per il rilevamento di keypoints e un descrittore basato sulla somma delle risposte alle wavelet di Haar. Questo approccio rende SURF più efficiente dal punto di vista computazionale rispetto a SIFT, pur mantenendo un buon livello di accuratezza e robustezza. Inoltre, SURF integra le informazioni sul gradiente all'interno di un sotto-patch, migliorando le performance nella rilevazione di caratteristiche in presenza di rumore. Tuttavia, come SIFT, anche SURF è coperto da brevetti che ne limitano l'utilizzo \cite{surf}.
 
-    \item \textbf{ORB} (Oriented FAST and Rotated BRIEF): è un descrittore binario veloce, progettato per garantire un'elevata efficienza computazionale ed è libero da restrizioni di licenza. L'algoritmo combina il rilevatore di keypoints FAST, noto per la sua rapidità, con un descrittore BRIEF ruotato, ottimizzato per il calcolo e il confronto delle caratteristiche. La principale innovazione di ORB è l'aggiunta di un componente di orientamento rapido e accurato a FAST, che consente il calcolo efficiente di caratteristiche BRIEF orientate. Per migliorare ulteriormente le prestazioni, ORB utilizza un metodo di apprendimento per decorrelare le caratteristiche BRIEF, garantendo invarianza rotazionale. Rispetto ad algoritmi come SIFT e SURF, ORB offre prestazioni comparabili in molte situazioni, pur essendo significativamente più veloce. Inoltre dimostra una notevole resistenza al rumore gaussiano, tuttavia, in presenza di forti distorsioni prospettiche, può risultare meno preciso rispetto agli altri due algoritmi \cite{orb}.
+    \item \textbf{ORB} (Oriented FAST and Rotated BRIEF): è un descrittore binario veloce, progettato per essere efficiente dal punto di vista computazionale e libero da restrizioni di licenza. Combina il rilevatore di keypoints FAST, noto per la sua rapidità, con un descrittore BRIEF ruotato, che è efficiente da calcolare e confrontare. ORB aggiunge un componente di orientamento veloce e accurato a FAST, consentendo di calcolare in modo efficiente le caratteristiche BRIEF orientate. Per migliorare le prestazioni, ORB utilizza un metodo di apprendimento per decorrelare le caratteristiche BRIEF, garantendo invarianza rotazionale. Rispetto ad algoritmi come SIFT e SURF, ORB offre prestazioni comparabili in molte situazioni, pur essendo significativamente più veloce; dimostra una notevole resistenza al rumore gaussiano, anche se, in presenza di forti distorsioni prospettiche, può risultare meno preciso \cite{orb}.
  
 \end{itemize}
 
-Nel contestro di questo progetto, è stato scelto di utilizzare l'algoritmo ORB grazie alla sua efficienza computazionale e alla sua robustezza nei confronti di rotazioni e traslazioni, comuni nelle immagini acquisite senza montature motorizzate.
+Nel contestro di questo progetto, è stato scelto di utilizzare l'algoritmo ORB grazie alla sua efficienza computazionale e alla sua robustezza nei confronti di rotazioni e traslazioni, comuni nelle immagini acquisite senza montature motorizzate. Tuttavia l'implementazione prevede la possibilità di utilizzare anche SIFT e SURF, mediante un'interfaccia comune per la selezione dell'algoritmo di feature detection e matching.
 
 \begin{figure} [H]
     \centering
-    \includegraphics[scale = 0.3]{../assets/feature_detection_1.jpg}
+    \includegraphics[scale = 0.32]{../assets/feature_detection_1.jpg}
     \captionsetup{format=plain}
     \caption{\parbox{0.8\linewidth}{
         Applicazione di ORB (\textbf{a}-\textbf{b}) e RANSAC (\textbf{c}) su due scatti da me acquisiti. \\ \phantom{m}\textbf{a}-\textbf{b}: visualizzazione di 5000 \textit{keypoint} estratti da due immagini} \\ \phantom{MMmnnnc} \textbf{c}: visualizzazione dei \textit{matches} tra i keypoints delle due immagini
     } \label{fig:orb_img}
 \end{figure}
 
-\subsection{Trasformazioni omografiche} \label{subsec:homography}
+\subsection{Trasformazioni omografiche: RANSAC} \label{subsec:homography}
 
 Una \textbf{omografia} è una trasformazione geometrica che mappa punti da un piano a un altro, mantenendo la collinearità e la connessività dei punti. Nel contesto dell'allineamento delle immagini, l'omografia viene utilizzata per correggere le  differenze di posizione, scala, rotazione e prospettiva tra le immagini.
 
-L'omografia è rappresentata da una matrice $3\times3$ denotata con \textbf{H} che descriveuna trasformazione tra due piani proiettivi. La relazione tra un punto nell'immagine di origine $(x, y)$ e il suo corrispondente nell'immagine trasformata $(x', y')$ è data dalla seguente equazione:
+L'omografia è rappresentata da una matrice $3\times3$ denotata con \textbf{H} che descrive una trasformazione tra due piani proiettivi. La relazione tra un punto nell'immagine di origine $(x, y)$ e il suo corrispondente nell'immagine trasformata $(x', y')$ è data dalla seguente equazione:
 
 $$
 \begin{bmatrix} x' \\ y' \\ \omega' \end{bmatrix} = H \cdot \begin{bmatrix} x \\ y \\ \omega \end{bmatrix}
 $$
 
-dove $\omega$ e $\omega'$ sono i fattori di scala che consentono di rappresentare le trasformazioni proiettive e le coordinate finali sono ottenute dividendo per $w'$:
+dove $\omega$ e $\omega'$ sono i fattori di scala che consentono di rappresentare le trasformazioni proiettive e le coordinate finali sono ottenute dividendo per $\omega'$:
 
 $$
-\begin{bmatrix} x'' \\ y'' \end{bmatrix} = \begin{bmatrix} {x'}/{w'} \\ {y'}/{w'} \end{bmatrix}
+\begin{bmatrix} x'' \\ y'' \end{bmatrix} = \begin{bmatrix} {x'}/{w'} \\ \dfrac {y'} {w'} \end{bmatrix}
 $$
 
 L'omografia può essere calcolata a partire da un set di corrispondenze tra punti nelle due immagini, utilizzando l'algoritmo \textbf{RANSAC} (Random Sample Consensus) per stimare i parametri della matrice H.
@@ -184,9 +170,58 @@ $$
 H = \begin{bmatrix} h_{11} & h_{12} & h_{13} \\ h_{21} & h_{22} & h_{23} \\ h_{31} & h_{32} & h_{33} \ \end{bmatrix}
 $$
 
-\begin{algorithm}[H] \caption{Allineamento delle immagini} \label{alg}
-    \textbf{Input}: $I$ \Comment{Lista di immagini da allineare} \\
-    \textbf{Output}: $A$ \Comment{Lista di immagini allineate}
+L'idea alla base di RANSAC è che gli \textit{inlier} (le corrispondenze corrette) concordano tra loro sulla trasformazione da stimare, mentre gli \textit{outlier} (le corrispondenze errate) non concordano e tendono a essere incoerenti \cite{ransac}. 
+
+\begin{enumerate}
+    \item Seleziona casualmente un sottoinsieme minimo di corrispondenze. 
+    \item Stima il modello (in questo caso, l'omografia) usando il sottoinsieme selezionato.
+    \item Calcola un errore di adattamento per tutte le corrispondenze. 
+    \item Determina gli inliers come le corrispondenze con errore inferiore a una soglia.
+    \item Se il numero di inlier è superiore a una soglia, ricalcola il modello usando tutti gli inlier e termina. 
+    \item Altrimenti, ripete i passaggi precedenti per un numero prefissato di iterazioni. 
+\end{enumerate}
+
+RANSAC dipende da due parametri: il \textit{numero di iterazioni} e la \textit{soglia di errore}. Un numero maggiore di iterazioni determina quante volte l'algoritmo estrae campioni casuali. Deve essere sufficientemente grande per garantire una probabilità alta di trovare un modello senza outlier. La soglia di errore definisce il massimo errore accettabile per considerare una corrispondenza come inlier. Esistono altri parametri, uno dei quali è il \textit{numero di corrispondenze} da selezionare per stimare l'omografia, solitamente 4. Qui sotto è riportato un esempio di pseudocodice per il calcolo dell'omografia tramite RANSAC.
+
+\begin{algorithm}[H]
+    \caption{\texttt{- Algoritmo RANSAC per la stima dell'omografia}:\\ Dati $matches$, la lista di matches, $k$, il numero massimo di iterazioni, $thr$, la soglia per determinare gli inlier e $n$, il numero di corrispondenze da selezionare per l'omografia, l'algoritmo ritorna la matrice omografica stimata.} \label{alg:ransac}
+    \begin{algorithmic}[1]
+        \Function{estimate\_homography}{$matches, k, thr$}
+            \State $H^* \gets$ \textit{null} \Comment{Miglior omografia stimata}
+            \State $score^* \gets 0$ \Comment{Miglior punteggio}
+            \For{$i \gets 1$ to $k$}
+                \State $R \subseteq matches$ con $|R| = n$ \Comment{Seleziona $n$ corrispondenze casuali}
+                \State $H \gets$ Stima l'omografia usando $R$
+                \State $score \gets 0$
+                \For{$m \in matches$}
+                    \If{errore($H$, $m$) $< thr$} \Comment{Errore come distanza euclidea}
+                        \State $score \gets score + 1$ \Comment{Conta gli   inlier}
+                    \EndIf
+                \EndFor
+                \If{$score > score^*$} \Comment{Seleziona il modello migliore}
+                    \State Aggiorna $H^*$ e $score^*$
+                \EndIf
+            \EndFor
+            \State \textbf{return} $H^*$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+Il numero di iterazioni $k$ necessarie per garantire una certa probabilità di successo $P$ dipende dalla percentuale di inlier attesa $p$ e dal numero minimo di punti $n$ richiesti per stimare il modello \cite{raguram_ransac_parameters}:
+
+$$
+k = \dfrac{\log(1 - P)}{\log(1 - p^n)}
+$$
+
+Ad esempio, se si prevede che l'$80\%$ delle corrispondenze siano inlier ($p=0,8$), si desidera una probabilità di successo del $99\%$ ($P=0,99$) e si utilizzano $n=4$ punti per stimare l'omografia, il numero di iterazioni necessarie è:
+
+$$
+k = {\log(1 - 0{,}99)}/{\log(1 - 0{,}8^4)} \approx 17{,}6
+$$
+
+L'algoritmo completo per l'allineamento delle immagini, che combina le fasi di estrazione delle caratteristiche, corrispondenza dei descrittori, stima dell'omografia tramite RANSAC e applicazione della trasformazione alle immagini, è illustrato nell'\cref{alg:align}.
+
+\begin{algorithm}[H] \caption{\texttt{Allineamento delle immagini}:\\ Data un insieme di immagini $I$, restituisce l'insieme di immagini allineate $A$} \label{alg:align}
     \begin{algorithmic}[1]
         \Function{align\_images}{$I$}
             \State Seleziona un riferimento $r$ \Comment{Tipicamente la più nitida}
@@ -195,7 +230,7 @@ $$
             \For{ogni $i$ in $I$}
                 \State $k, d \gets$ f.calculate\_descriptors($i$) \Comment{Calcola keypoints e descrittori di $i$}
                 \State $m \gets$ match\_descriptors($d_{r}, d$) \Comment{Trova i match tra i descrittori}
-                \State $H \gets$ calculate\_homography($k_{r}, k, m$) \Comment{Calcola l'omografia}
+                \State $H \gets$ \small ESTIMATE\_HOMOGRAPHY \normalsize ($k_{r}, k, m$) \Comment{Calcola l'omografia}
                 \State $a \gets$ apply\_transformation($i$, $H$) \Comment{Applica l'omografia}
                 \State Aggiungi $a$ a $A$
             \EndFor
