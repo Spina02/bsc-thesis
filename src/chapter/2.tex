@@ -4,11 +4,11 @@ Questo capitolo si propone di approfondire le tecniche di elaborazione delle imm
 
 \section{Calibrazione di immagini} \label{sec:calibration}
 
-La \textbf{calibrazione} delle immagini è un passaggio fondamentale nell'astrofotografia, necessario per rimuovere rumore e artefatti introdotti dalla strumentazione. In particolare, nel contesto delle immagini lunari, la calibrazione è utile per rimuovere il rumore termico e i difetti del sensore, oltre a uniformare l'illuminazione dell'immagine. Questo processo è composto da tre fasi principali: la cattura di \textit{bias frames}, \textit{dark frames} e \textit{flat frames}. Tali scatti devono essere acquisiti con la fotocamera nello stesso stato in cui sono state scattate le immagini lunari, in particolare nelle stesse condizioni termiche. Infatti, quando viene eseguita una sessione di molti scatti, o con lunghe esposizioni, la macchinetta tende a scaldarsi causando effetti non sempre trascurabili, e sono proprio quelli che vogliamo mitigare mediante la fase di calibrazione. In questa fase gli scatti della luna vengono denominati \textit{light frames}.
+La \textbf{calibrazione} delle immagini è un passaggio fondamentale nell'astrofotografia, necessario per rimuovere rumore e artefatti introdotti dalla strumentazione. In particolare, nel contesto delle immagini lunari, la calibrazione è utile per rimuovere il rumore termico e i difetti del sensore, oltre a uniformare l'illuminazione dell'immagine. Questo processo è composto da tre fasi principali: la cattura di \textit{bias frames}, \textit{dark frames} e \textit{flat frames}. Tali scatti devono essere acquisiti con la fotocamera nello stesso stato in cui sono state scattate le immagini lunari, in particolare nelle stesse condizioni termiche. Infatti, quando viene eseguita una sessione di molti scatti, o con lunghe esposizioni, la macchinetta tende a scaldarsi causando effetti non sempre trascurabili, e sono proprio quelli che vogliamo mitigare mediante la fase di calibrazione. In questa fase gli scatti della luna vengono denominati \textit{light frames}  \cite{calibration}.
 
 \subsection{Bias Frames} \label{subsec:bias}
 
-I \textbf{bias frames} son scatti acquisiti con il tempo di esposizione più breve possibile (il minimo supportato dalla macchina fotografica, idealmente zero), ISO uguale a quello dei light frames e con l'otturatore della fotocamera chiuso. Questi frame catturano il \textbf{rumore di bias}, un segnale di offset introdotto dall'elettronica del sensore in assenza di luce. Il rumore di bias è presente in tutte le immagini acquisite con una macchina fotografica, e varia leggermente da pixel a pixel \cite{calibration}.
+I \textbf{bias frames} son scatti acquisiti con il tempo di esposizione più breve possibile (il minimo supportato dalla macchina fotografica, idealmente zero), ISO uguale a quello dei light frames e con l'otturatore della fotocamera chiuso. Questi frame catturano il \textbf{rumore di bias}, un segnale di offset introdotto dall'elettronica del sensore in assenza di luce. Il rumore di bias è presente in tutte le immagini acquisite con una macchina fotografica, e varia leggermente da pixel a pixel.
 
 Per correggere questo rumore si calcola il cosiddetto \textbf{master bias} combinando i diversi bias frames, generalmente calcolandone la media. Il master bias viene poi sottratto da tutte le immagini acquisite, inclusi gli altri frame di calibrazione.
 
@@ -98,7 +98,7 @@ Nel contesto di questo progetto, i flat frames non sono stati acquisiti per due 
 
 \subsection{Processo completo di calibrazione} \label{subsec:calibration_process}
 
-Il processo completo di calibrazione applica in sequenza le correzioni con i master frames; si sottrae il master bias, si sottrae il master dark e si divide per il master flat:
+Il processo completo di calibrazione applica in sequenza le correzioni con i master frames; si sottraggono master bias e master dark e si divide per il master flat:
 
 \begin{algorithm}[H]
     \caption{Calibrazione di un'immagine}
@@ -125,16 +125,84 @@ Questo processo (illustrato in figura \ref{fig:calibration})  permette di ottene
 
 \begin{figure} [H]
     \centering
-    \includegraphics[scale = 0.33]{../assets/calibration_procedure.jpg}
+    \includegraphics[scale = 0.35]{../assets/calibration_procedure.jpg}
     \captionsetup{justification=centering}
     \caption{Illustrazione schematica dell'uso di immagini di calibrazione \cite{calibration_img}} \label{fig:calibration}
 \end{figure}
 
 \section{Allineamento delle immagini} \label{sec:alignment}
 
+Per migliorare ulteriormente il rapporto segnale-rumore e aumentare la nitidezza dei dettagli, è comune combinare più immagini della stessa scena attraverso tecniche di \textit{stacking}. Prima di poter combinare le immagini, è necessario allinearle correttamente per compensare le differenze di rotazione, traslazione e scala tra le immagini. Queste differenze possono essere causate da errori di puntamento, da movimenti del terreno o da errori di montaggio. L'allineamento delle immagini può essere eseguito manualmente, ma è preferibile utilizzare algoritmi automatici per garantire una maggiore precisione e riproducibilità.
+
+L'allineamento delle immagini si basa sull'identificazione di punti caratteristici comuni tra le immagini e sul calcolo delle trasformazioni geometriche necessarie per sovrapporle perfettamente (nel nostro caso \hyperref[subsec:homography]{trasformazioni omografiche}).
+
 \subsection{Feature Detection e Matching ORB, SIFT e SURF} \label{subsec:feature_detectoion}
 
+Gli algoritmi di \textit{feature detection} e \textit{matching} identificano punti di interesse nei singoli scatti (come bordi, angoli o altre caratteristiche distintive) e li mettono in corrispondenza con quelli di immagini diverse.
+
+I principali algoritmi di feature detection e matching sono ORB (Oriented FAST and Rotated BRIEF), SIFT (Scale-Invariant Feature Transform) e SURF (Speeded-Up Robust Features). Questi algoritmi sono in grado di identificare punti di interesse invarianti rispetto a rotazioni, traslazioni e scalature, e sono particolarmente adatti per l'allineamento di immagini astronomiche.
+
+\begin{itemize}
+    \item \textbf{SIFT} (Scale-Invariant Feature Transform): è noto per la sua elevata accuratezza e robustezza a cambiamenti di scala, rotazione e illuminazione. L'algoritmo identifica i keypoints costruendo una piramide di immagini a diverse scale e cercando i massimi locali. L'orientamento di ogni punto chiave viene determinato analizzando gli istogrammi dell'orientamento del gradiente nell'intorno del punto stesso. Un descrittore SIFT ha generalmente 128 dimensioni e viene calcolato campionando gli orientamenti del gradiente in una griglia 16x16 attorno al punto chiave. Questo algoritmo è molto preciso, ma anche computazionalmente costoso, il che può essere problematico per applicazioni in tempo reale o con grandi volumi di dati, oltre al fatto che è coperto da brevetti che ne limitano l'utilizzo \cite{sift}.
+    
+    \item \textbf{SURF} (Speeded-Up Robust Features): è stato sviluppato come alternativa più veloce a SIFT. Utilizza un'approssimazione del determinante dell'Hessiana per il rilevamento di keypoints e un descrittore basato sulla somma delle risposte alle wavelet di Haar. Questo approccio rende SURF più efficiente dal punto di vista computazionale rispetto a SIFT, pur mantenendo un buon livello di accuratezza e robustezza. Inoltre, SURF integra le informazioni sul gradiente all'interno di un sotto-patch, migliorando le performance nella rilevazione di caratteristiche in presenza di rumore. Tuttavia, come SIFT, anche SURF è coperto da brevetti che ne limitano l'utilizzo \cite{surf}.
+
+    \item \textbf{ORB} (Oriented FAST and Rotated BRIEF): è un descrittore binario veloce, progettato per garantire un'elevata efficienza computazionale ed è libero da restrizioni di licenza. L'algoritmo combina il rilevatore di keypoints FAST, noto per la sua rapidità, con un descrittore BRIEF ruotato, ottimizzato per il calcolo e il confronto delle caratteristiche. La principale innovazione di ORB è l'aggiunta di un componente di orientamento rapido e accurato a FAST, che consente il calcolo efficiente di caratteristiche BRIEF orientate. Per migliorare ulteriormente le prestazioni, ORB utilizza un metodo di apprendimento per decorrelare le caratteristiche BRIEF, garantendo invarianza rotazionale. Rispetto ad algoritmi come SIFT e SURF, ORB offre prestazioni comparabili in molte situazioni, pur essendo significativamente più veloce. Inoltre dimostra una notevole resistenza al rumore gaussiano, tuttavia, in presenza di forti distorsioni prospettiche, può risultare meno preciso rispetto agli altri due algoritmi \cite{orb}.
+ 
+\end{itemize}
+
+Nel contestro di questo progetto, è stato scelto di utilizzare l'algoritmo ORB grazie alla sua efficienza computazionale e alla sua robustezza nei confronti di rotazioni e traslazioni, comuni nelle immagini acquisite senza montature motorizzate.
+
+\begin{figure} [H]
+    \centering
+    \includegraphics[scale = 0.3]{../assets/feature_detection_1.jpg}
+    \captionsetup{format=plain}
+    \caption{\parbox{0.8\linewidth}{
+        Applicazione di ORB (\textbf{a}-\textbf{b}) e RANSAC (\textbf{c}) su due scatti da me acquisiti. \\ \phantom{m}\textbf{a}-\textbf{b}: visualizzazione di 5000 \textit{keypoint} estratti da due immagini} \\ \phantom{MMmnnnc} \textbf{c}: visualizzazione dei \textit{matches} tra i keypoints delle due immagini
+    } \label{fig:orb_img}
+\end{figure}
+
 \subsection{Trasformazioni omografiche} \label{subsec:homography}
+
+Una \textbf{omografia} è una trasformazione geometrica che mappa punti da un piano a un altro, mantenendo la collinearità e la connessività dei punti. Nel contesto dell'allineamento delle immagini, l'omografia viene utilizzata per correggere le  differenze di posizione, scala, rotazione e prospettiva tra le immagini.
+
+L'omografia è rappresentata da una matrice $3\times3$ denotata con \textbf{H} che descriveuna trasformazione tra due piani proiettivi. La relazione tra un punto nell'immagine di origine $(x, y)$ e il suo corrispondente nell'immagine trasformata $(x', y')$ è data dalla seguente equazione:
+
+$$
+\begin{bmatrix} x' \\ y' \\ \omega' \end{bmatrix} = H \cdot \begin{bmatrix} x \\ y \\ \omega \end{bmatrix}
+$$
+
+dove $\omega$ e $\omega'$ sono i fattori di scala che consentono di rappresentare le trasformazioni proiettive e le coordinate finali sono ottenute dividendo per $w'$:
+
+$$
+\begin{bmatrix} x'' \\ y'' \end{bmatrix} = \begin{bmatrix} {x'}/{w'} \\ {y'}/{w'} \end{bmatrix}
+$$
+
+L'omografia può essere calcolata a partire da un set di corrispondenze tra punti nelle due immagini, utilizzando l'algoritmo \textbf{RANSAC} (Random Sample Consensus) per stimare i parametri della matrice H.
+
+$$
+H = \begin{bmatrix} h_{11} & h_{12} & h_{13} \\ h_{21} & h_{22} & h_{23} \\ h_{31} & h_{32} & h_{33} \ \end{bmatrix}
+$$
+
+\begin{algorithm}[H] \caption{Allineamento delle immagini} \label{alg}
+    \textbf{Input}: $I$ \Comment{Lista di immagini da allineare} \\
+    \textbf{Output}: $A$ \Comment{Lista di immagini allineate}
+    \begin{algorithmic}[1]
+        \Function{align\_images}{$I$}
+            \State Seleziona un riferimento $r$ \Comment{Tipicamente la più nitida}
+            \State $f \gets$ un algoritmo tra ORB, SIFT, SURF
+            \State $k_{r}, d_{r} \gets$ f.calculate\_descriptors($r$) \Comment{Calcola keypoints e descrittori di $r$}
+            \For{ogni $i$ in $I$}
+                \State $k, d \gets$ f.calculate\_descriptors($i$) \Comment{Calcola keypoints e descrittori di $i$}
+                \State $m \gets$ match\_descriptors($d_{r}, d$) \Comment{Trova i match tra i descrittori}
+                \State $H \gets$ calculate\_homography($k_{r}, k, m$) \Comment{Calcola l'omografia}
+                \State $a \gets$ apply\_transformation($i$, $H$) \Comment{Applica l'omografia}
+                \State Aggiungi $a$ a $A$
+            \EndFor
+            \State \textbf{return} $A$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
 
 \section{Pre-processing delle immagini} \label{sec:preprocessing}
 
