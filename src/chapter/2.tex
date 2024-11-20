@@ -207,7 +207,7 @@ RANSAC dipende da due parametri: il \textit{numero di iterazioni} e la \textit{s
     \end{algorithmic}
 \end{algorithm}
 
-Il numero di iterazioni $k$ necessarie per garantire una certa probabilità di successo $P$ dipende dalla percentuale di inlier attesa $p$ e dal numero minimo di punti $n$ richiesti per stimare il modello \cite{raguram_ransac_parameters}:
+Il numero di iterazioni $k$ necessarie per garantire una certa probabilità di successo $P$ dipende dalla percentuale di inlier attesa $p$ e dal numero minimo di punti $n$ richiesti per stimare il modello \cite{ransac_analysis}:
 
 $$
 k = \dfrac{\log(1 - P)}{\log(1 - p^n)}
@@ -216,8 +216,12 @@ $$
 Ad esempio, se si prevede che l'$80\%$ delle corrispondenze siano inlier ($p=0,8$), si desidera una probabilità di successo del $99\%$ ($P=0,99$) e si utilizzano $n=4$ punti per stimare l'omografia, il numero di iterazioni necessarie è:
 
 $$
-k = {\log(1 - 0{,}99)}/{\log(1 - 0{,}8^4)} \approx 17{,}6
+k = \dfrac{\log(1 - 0.99)}{\log(1 - 0.8^4)} \approx 17.6
 $$
+
+\subsection{Algoritmo di allineamento completo} \label{subsec:alignment_complete}
+
+Per ottenere un allineamento più preciso delle immagini, spesso si applica una fase di pre-elaborazione volta a evidenziare le caratteristiche significative. In particolare, i fotogrammi destinati all’estrazione delle caratteristiche vengono convertiti in scala di grigi e sottoposti a filtri per migliorarne nitidezza e contrasto. È importante sottolineare che queste operazioni vengono eseguite su una copia dei fotogrammi, utilizzata esclusivamente per l’estrazione delle caratteristiche, preservando così i dati originali. In questa sezione, tali operazioni sono sintetizzate nella funzione \texttt{enhance()}, (più nel dettaglio nella \cref{subsec:alignment_impl}). 
 
 L'algoritmo completo per l'allineamento delle immagini, che combina le fasi di estrazione delle caratteristiche, corrispondenza dei descrittori, stima dell'omografia tramite RANSAC e applicazione della trasformazione alle immagini, è illustrato nell'\cref{alg:align}.
 
@@ -241,13 +245,13 @@ L'algoritmo completo per l'allineamento delle immagini, che combina le fasi di e
 
 \section{Pre-processing delle immagini} \label{sec:preprocessing}
 
-Il pre-processing delle immagini è quella fase di elaborazione dei singoli scatti (ormai calibrati e allineati), necessaria per migliorare la qualità delle immagini e prepararle per il processo di stacking. Questa fase comprende principalmente il denoising, l'incremento della nitidezza e del contrasto, e l'applicazione di filtri per ridurre l'effetto di \textit{banding} e di \textit{moire}.
+Il pre-processing delle immagini è quella fase di elaborazione dei singoli scatti (ormai calibrati e allineati), necessaria per migliorare la qualità delle immagini e prepararle per il processo di stacking. Questa fase comprende principalmente il denoising, l'incremento della nitidezza e del contrasto, e l'applicazione di filtri per ridurre l'effetto di \textit{banding} e di \textit{moiré}.
 
 \subsection{Denoising tramite reti neurali: DnCnn} \label{subsec:denoising}
 
 La riduzione del \hyperref[sec:noise]{rumore} (\textit{denoising}) è un passaggio fondamentale per migliorare la qualità delle immagini, specialmente quando si lavora con scatti acquisiti in condizioni non ideali. Nelle immagini lunari, il rumore può nascondere dettagli importanti e compromettere l'efficacia delle tecniche successive, come lo \textit{stacking}.
 
-Tecniche tradizionali di denoising prevedono l'utilizzo di filtri lineari, come il filtro mediano o il filtro gaussiano
+Tecniche tradizionali di denoising prevedono l'utilizzo di filtri lineari e non, come il filtro gaussiano o il filtro mediano.
 
 \begin{itemize}
     \item \textbf{Filtro mediano}: è un filtro non lineare utilizzato principalmente per ridurre il rumore impulsivo (come il rumore "sale e pepe") in un'immagine. Sostituisce il valore di ogni pixel con la mediana dei valori dei pixel circostanti all'interno di una finestra (o kernel) di dimensione predefinita.
@@ -259,20 +263,37 @@ Tecniche tradizionali di denoising prevedono l'utilizzo di filtri lineari, come 
     
     \item \textbf{Filtro gaussiano}: è un filtro lineare che applica un'operazione di convoluzione tra l'immagine e una funzione Gaussiana. È utilizzato per ridurre il rumore e sfocare l'immagine, preservando le strutture principali. La funzione Gaussiana bidimensionale con varianza $\sigma^2$ è data da:
     $$
-    G(x,y)=\dfrac{1}{2\pi\sigma^2}\exp{\left(-\dfrac{x^2+y^2}{2\sigma^2}\right)}
+    G_{\sigma}(x,y)=\dfrac{1}{2\pi\sigma^2}\exp{\left(-\dfrac{x^2+y^2}{2\sigma^2}\right)}
     $$
     Il filtro gaussiano applicato all'immagine $I(x,y)$ è definito come:
     $$
     I'(x,y)=\sum_{i=-k}^{k}\sum_{j=-k}^{k}I(x+i,y+j)G(i,j)
     $$
     Dove $k$ è la dimensione del kernel e $\sigma$ controlla l'ampiezza della distribuzione Gaussiana.
+    \item \textbf{Filtro bilaterale}: è un'operazione di filtraggio che combina l'informazione spaziale (distanza tra i pixel) e quella radiometrica (differenza di intensità tra i pixel), rendendolo ideale per ridurre il rumore preservando i bordi dell'immagine. La formula generale per il filtro bilaterale è la seguente:
+    
+    $$
+    I'(x,y) = \frac{1}{W(x,y)} \sum_{(i,j) \in S} G_{\sigma_s}\left(\sqrt{(x - i)^2 + (y - j)^2}\right) \, G_{\sigma_r}(I(x,y) - I(i,j)) \, I(i,j)
+    $$
+    
+    Dove $(x,y)$ e $(i,j)$: sono i pixel della finestra locale $S$ in cui viene calcolato il filtro, mentre $I(x,y)$ e $I(i,j)$ sono i valori di intensità rispettivamente del pixel centrale $p$ e del pixel $q$ all'interno della finestra. $W(x,y)$ È il fattore di normalizzazione che assicura che i pesi totali siano normalizzati.
+    $$
+    W(x,y) = \sum_{(i,j) \in S} G_{\sigma_s}\left(\sqrt{(x - i)^2 + (y - j)^2}\right) G_{\sigma_r}(I(x,y) - I(i,j))
+    $$
+
+    Il filtro bilaterale è computazionalmente costoso, poiché richiede il calcolo di due funzioni Gaussiane per ogni pixel dell'immagine.
+    
 \end{itemize}
 
-Questi filtri possono ridurre il rumore ma tendono a sfocare l'immagine. Per superare questo problema, negli ultimi anni sono state sviluppate tecniche di denoising basate su reti neurali, che sfruttano la capacità delle reti di apprendere modelli complessi e non lineari direttamente dai dati.
+Questi filtri possono ridurre il rumore ma tendono a sfocare l'immagine e a ridurre la nitidezza dei dettagli. Inoltre, potrebbero non essere efficaci contro tutti i tipi di rumore presenti nelle immagini lunari. Per superare questo problema, negli ultimi anni sono state sviluppate tecniche di denoising basate su reti neurali, che sfruttano la capacità delle reti di apprendere modelli complessi e non lineari direttamente dai dati.
 
 In questo progetto è stato utilizzato \textbf{DnCNN} (Denoising Convolutional Neural Network), una rete neurale profonda progettata specificamente per il denoising di immagini. DnCNN è composto da 17 strati convoluzionali, seguiti da funzioni di attivazione ReLU e da un layer di regressione:
 
-\begin{itemize} \item \textbf{Strato di input}: accetta l'immagine rumorosa normalizzata. \item \textbf{Strati convoluzionali}: 17 strati convoluzionali con kernel $3 \times 3$, padding di 1 pixel e 64 filtri ciascuno. Gli strati intermedi sono seguiti da funzioni di attivazione ReLU e da \textit{batch normalization}. \item \textbf{Strato di output}: fornisce una stima del rumore presente nell'immagine. \end{itemize}
+\begin{itemize}
+    \item \textbf{Strato di input}: accetta l'immagine rumorosa normalizzata.
+    \item \textbf{Strato convoluzionale iniziale}: un layer convoluzionale con 64 filtri $3 \times 3$, padding di 1 pixel, seguito da una funzione di attivazione ReLU. \item \textbf{Strati convoluzionali intermedi}: 15 strati convoluzionali con 64 filtri $3 \times 3$, padding di 1 pixel, ciascuno seguito da \textit{batch normalization} e funzione di attivazione ReLU. \item \textbf{Strato convoluzionale finale}: un layer convoluzionale con un filtro $3 \times 3$, padding di 1 pixel, che fornisce l'output. 
+    \item \textbf{Strato di output}: fornisce una stima del rumore presente nell'immagine.
+\end{itemize}
 
 \begin{figure}[H]
     \centering
@@ -285,7 +306,7 @@ La rete è addestrata per apprendere la mappatura residua $R(I) = I - I_{\text{d
 
 $$I_{\text{denoised}} = I - R(I)$$
 
-Un modello pre-addestrato di DnCNN (DnCNN-S-25) è stato utilizzato per ridurre il rumore nelle immagini lunari, migliorando la qualità delle immagini e preparandole per il processo di stacking. La procedura utilizzata per la riduzione del rumore con DnCNN è riportata nell'\cref{alg:dncnn}.
+Un modello pre-addestrato di DnCNN (DnCNN-S-25: con $\sigma$ = 25, e addestrato sul dataset \href{https://github.com/cszn/KAIR}{Train400} di Kai Zhang) è stato utilizzato per ridurre il rumore nelle immagini lunari, migliorando la qualità delle immagini e preparandole per il processo di stacking. La procedura utilizzata per la riduzione del rumore con DnCNN è riportata nell'\cref{alg:dncnn}.
 
 \begin{algorithm}[H]
     \caption{\texttt{- Riduzione del rumore con DnCNN}:\\ Data un'immagine $I$, l'algoritmo restituisce l'immagine denoised $Out$.} \label{alg:dncnn}
@@ -323,7 +344,7 @@ L'Unsharp Masking è un metodo semplice ed efficace per migliorare la nitidezza 
 
 In questo progetto è stata implementata una versione personalizzata dell'unsharp masking che combina la riduzione del rumore tramite DnCNN e l'uso di una maschera basata sul gradiente dell'immagine.
 
-L'applicazione di DnCNN alle immaginni lunari hanno portato a risultati a prima vista deludenti. Infatti, l'immagine risultante era molto più sfocata rispetto all'originale. Questo è dovuto al fatto che DnCNN è stato addestrato per rimuovere il rumore, ma non per preservare i dettagli. Per ovviare a questo problema, come ripostato nell'\cref{alg:custom_unsharp}, è stata utilizzata una maschera basata sul gradiente dell'immagine originale, che enfatizza i dettagli e i bordi in sezioni dell'immagine con valori del gradiente maggiori, mentre applica una riduzione del rumore maggiore nelle zone più uniformi (con valori del gradiente minori).
+L'applicazione di DnCNN alle immaginni lunari ha portato a risultati a prima vista deludenti. Infatti, l'immagine risultante era molto più sfocata rispetto all'originale. Questo è dovuto al fatto che DnCNN è stato addestrato per rimuovere il rumore, ma non per preservare i dettagli. Per ovviare a questo problema, come riportato nell'\cref{alg:custom_unsharp}, è stata utilizzata una maschera basata sul gradiente dell'immagine originale, che enfatizza i dettagli e i bordi in sezioni dell'immagine con valori del gradiente maggiori, mentre applica una riduzione del rumore maggiore nelle zone più uniformi (con valori del gradiente minori).
 
 \begin{algorithm} [H]
     \caption{\texttt{Unsharp Masking personalizzato}:\\ Data un'immagine $I$, un, l'algoritmo restituisce l'immagine nitida $Out$.} \label{alg:custom_unsharp}
@@ -333,7 +354,7 @@ L'applicazione di DnCNN alle immaginni lunari hanno portato a risultati a prima 
             \State $I_{\text{D}} \gets$ \Call{denoise\_image}{$I$} \Comment{Riduzione del rumore con l'\cref{alg:dncnn}}
             \State $I_{\text{D}} \gets (I_{\text{D}} \times \alpha) + I \times (1-\alpha)$ \Comment{Attenuazione del denoising}
             \State $G \gets$ Gradient($I$) \Comment{Calcolo del gradiente}
-            \State $M_{d} \gets Get\_Mask(G, thr)$ \Comment{Maschera di denoising}
+            \State $D_{\text{M}} \gets Get\_Mask(G, thr)$ \Comment{Maschera di denoising}
             \State $D_{\text{M}} \gets Gaussian\_Blur(D_{\text{M}})$ \Comment{Sfoca leggermente la maschera}
             \State $S_{\text{M}} \gets 1-D_{\text{M}}$ \Comment{Maschera di sharpening}
             \State $D \gets (I - I_{\text{D}}) \times \beta$ \Comment{Estrazione dei dettagli}
@@ -352,9 +373,9 @@ $$
 Il processo consiste dunque in diversi passaggi fondamentali. Si inizia con la riduzione del rumore, applicando il modello DnCNN all'immagine originale per ottenere una versione con rumore ridotto ($I_{\text{D}}$).
 Successivamente, si effettua un \textit{blend} delle immagini, combinando l'immagine denoised e quella originale con un fattore $\alpha$, per preservare parte dei dettagli originali.
 Il passo successivo prevede il calcolo del gradiente ($G$) dell'immagine originale per individuare le aree con dettagli significativi.
-A questo punto, vengono create delle maschere ($D_{\text{M}}$, $S_{\text{M}}$, rispettivamente \textit{Denoise Mask, Sharpen Mask}) basate sul gradiente per distinguere.
+A questo punto, vengono create delle maschere ($D_{\text{M}}$, $S_{\text{M}}$, rispettivamente \textit{Denoise Mask, Sharpen Mask}) basate sul gradiente per distinguere le zone un cui applicare maggior denoising o amplificare i dettagli.
 Per l'amplificazione dei dettagli ($D$), si calcola la differenza tra l'immagine originale e quella denoised, amplificandola con un fattore $\beta$ nelle zone con dettagli significativi.
-Si procede quindi con la combinazione con maschere, applicando il denoising solo nelle zone a basso gradiente, e sommando l'amplificazione dei dettagli all'immagine finale.
+Infine, si combinano le immagini utilizzando le maschere, ottenendo un'immagine finale ($Out$) in cui i dettagli sono stati amplificati e il rumore ridotto.
 
 \section{Stacking delle immagini} \label{sec:stacking}
 
@@ -377,7 +398,7 @@ Esistono diversi metodi per combinare le immagini durante lo stacking. Nel proge
     $$
     \item \textbf{Sigma clipping}: calcola la media pixel per pixel delle immagini, escludendo i pixel con valori al di fuori di un intervallo di soglia. Questo metodo è utile per ridurre l'effetto di outlier e artefatti.
     $$
-    I_{stacked} = \dfrac{1}{N} \sum_{i=1}^{N} I_i \quad \text{dove} \quad |I_i - \text{mean}(I)| < k \cdot \sigma
+    I_{stacked}(x,y) = \dfrac{1}{N} \sum_{i=1}^{N} I_i(x,y) \quad \text{dove} \quad |I_i(x,y) - \text{mean}(I(x,y))| < k \cdot \sigma(x,y)
     $$
     \item \textbf{Weighted mean}: calcola la media pesata pixel per pixel delle immagini, assegnando pesi diversi in base ad una metrica di qualità, come la nitidezza.
     $$
@@ -403,10 +424,62 @@ L'algoritmo che ha portato a risultati migliori è la media pesata, molto comune
     \end{algorithmic}
 \end{algorithm}
 
-Questo metodo è particolarmente efficace quando si combinano immagini con differenti livelli di nitidezza, contrasto e rumore, perchè, con una piccola modifica, permette di anche di scartare una percentuale di immagini con qualità inferiore, riducendo l'effetto di artefatti e outlier.
+Questo metodo è particolarmente efficace quando si combinano immagini con differenti livelli di nitidezza, contrasto e rumore, perchè, con una piccola modifica, permette anche di scartare una percentuale di immagini con qualità inferiore, riducendo l'effetto di artefatti e outlier.
 
-\section{Post-Processing delle immagini} \label{sec:postprocess}
+\section{Post-Processing delle immagini} \label{sec:postprocessing}
+
+Il post-processing delle immagini è l'ultima fase dell'elaborazione delle immagini lunari, necessaria per migliorare la qualità dell'immagine finale e renderla pronta per l'analisi e la visualizzazione. Questa fase comprende principalmente la regolazione del contrasto e della luminosità, la rimozione di artefatti e la correzione del bilanciamento del colore. 
+
+Questa fase viene generalmente svolta su programmi di editing professionali come photoshop o lightroom, ma è possibile automatizzare il processo utilizzando algoritmi di elaborazione delle immagini.
 
 \subsection{Miglioramento di nitidezza e contrasto} \label{subsec:contrast}
+
+Per quanto riguarda l'aumento della nitidezza, l'\hyperref{unsharp_mask}{Unsharp Masking} (tradizionale) rimane uno dei metodi più efficaci, in quanto enfatizza i dettagli e i bordi dell'immagine. Tuttavia, è importante regolare attentamente i parametri per evitare artefatti e rumore.
+
+L'\textbf{equalizzazione dell'istogramma} è una tecnica che distribuisce uniformemente i valori dei pixel nell'intervallo dinamico dell'immagine, migliorando il contrasto e la luminosità. Tuttavia, l'equalizzaziome standard può amplificare il rumore in aree omogenee e ridurre i dettagli in aree con contrasto già elevato. Inoltre, se l'immagine ha un contrasto limitato, l'equalizzazione dell'istogramma può produrre un'immagine sovraesposta o sottoposta, generando artefatti e perdita di dettagli.
+
+Per superare queste limitazioni, è stata utilizzata la tecnica \textbf{CLACHE} (Contrast Limited Adaptive Histogram Equalization). CLACHE suddivide l'immagine in piccole regioni chiamate \textit{tile} e applica l'equalizzazione dell'istogramma a ciascuna regione separatamente. Inoltre, limita il contrasto di ciascuna regione per evitare l'amplificazione del rumore e la sovraesposizione. L'algoritmo per l'equalizzazione dell'istogramma con CLACHE è riportato nell'\cref{alg:clache}.
+
+\begin{algorithm}[H]
+    \caption{\texttt{- Equalizzazione dell'istogramma con CLACHE}:\\ Data un'immagine $I$, l'algoritmo restituisce l'immagine equalizzata $Out$.} \label{alg:clache}
+    \begin{algorithmic}
+        \Function{clache}{$I, \text{tile\_size}, \text{clip\_limit}$}
+            \State $I_{\text{CLAHE}} \gets$ \text{Inizializza un'immagine vuota}
+            \State $I_{\text{LAB}} \gets$ Converti $I$ in spazio colore LAB
+            \State $L, A, B \gets$ Estrai i canali L, A, B da $I_{\text{LAB}}$
+            \State $C \gets$ \text{Inizializza un'oggetto} CLACHE \text{con} tile\_size \text{e} clip\_limit
+            \State $L_{\text{CLAHE}} \gets C.apply\_CLAHE(L)$ \Comment{Applica CLACHE al canale L}
+            \State $I_{\text{CLAHE}} \gets$ Combina $L_{\text{CLAHE}}$, $A$ e $B$ in un'immagine
+            \State \textbf{return} $I_{\text{CLAHE}}$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+Lo spazio LAB è un modello di colore che separa la luminosità ($L$) dal colore ($A$ e $B$), rendendo più semplice l'applicazione di tecniche di miglioramento del contrasto e della luminosità. L'equalizzazione dell'istogramma viene applicata solo al canale $L$, che rappresenta la luminosità dell'immagine, mentre i canali $A$ e $B$ rimangono inalterati. Questo permette di migliorare il contrasto e la luminosità dell'immagine senza influenzare il colore.
+
+Tramite \texttt{clip\_limit} e \texttt{tile\_size} è possibile regolare il contrasto e la dimensione delle regioni su cui applicare l'equalizzazione dell'istogramma. Un \texttt{clip\_limit} più alto aumenta il contrasto, mentre un \texttt{tile\_size} più piccolo permette di equalizzare dettagli più fini.
+
+\subsection{Bilanciamento del colore} \label{subsec:color_balance}
+
+\textbf{DA SISTEMARE}
+
+Nel contesto dell'astrofotografia lunare, il bilanciamento del colore è generalmente meno critico rispetto ad altre forme di fotografia, poiché la luna appare prevalentemente in toni di grigio. Tuttavia, il bilanciamento del colore può essere utile per correggere il colore dell'immagine e migliorare la qualità visiva, evidenziando lievi variazioni cromatiche dovute alla composizione minerale sulla superficie. Esistono diversi metodi per il bilanciamento del colore:
+
+\begin{itemize}
+    \item \textbf{Correzione automatica del bilanciamento del bianco}: utilizza algoritmi di bilanciamento del bianco automatici per correggere il colore dell'immagine in base alla temperatura del colore. Questo metodo è utile per correggere il colore in modo rapido e semplice.
+    \item \textbf{Correzione manuale del bilanciamento del bianco}: permette di regolare manualmente il bilanciamento del bianco dell'immagine, selezionando un punto neutro o una zona grigia come riferimento. Questo metodo è utile per ottenere un controllo preciso sul colore dell'immagine.
+    \item \textbf{Correzione del colore selettiva}: permette di regolare selettivamente i toni, la saturazione e la luminosità di specifici colori nell'immagine. Questo metodo è utile per migliorare il colore e il contrasto di parti specifiche dell'immagine.
+\end{itemize}
+
+Nell'ambito di questo progetto, è stato utilizzato un metodo di bilanciamento del colore automatico per correggere il colore dell'immagine in modo rapido e semplice. L'algoritmo per la correzione automatica del bilanciamento del bianco è riportato nell'\cref{alg:white_balance}.
+
+\begin{algorithm}[H]
+    \caption{\texttt{- Correzione automatica del bilanciamento del bianco}:\\ Data un'immagine $I$, l'algoritmo restituisce l'immagine con il bilanciamento del bianco corretto $Out$.} \label{alg:white_balance}
+    \begin{algorithmic}[1]
+        \Function{white\_balance}{$I$}
+            \State TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
 
 \cleardoublepage

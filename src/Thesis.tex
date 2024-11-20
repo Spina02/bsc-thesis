@@ -59,6 +59,9 @@
   minalphanames=3,
 ]{biblatex}
 
+\usepackage{listings}
+\usepackage{xcolor}
+
 % Commands and Settings
 \newcommandx{\unsure}[2][1=]{\todo[linecolor=red,backgroundcolor=red!25,bordercolor=red,#1]{#2}}
 \newcommandx{\change}[2][1=]{\todo[linecolor=blue,backgroundcolor=blue!25,bordercolor=blue,#1]{#2}}
@@ -83,30 +86,37 @@
   }
 {\end{list}}
 \lstdefinestyle{myStyle}{
-    belowcaptionskip=1\baselineskip,
-    breaklines=true,
-    numberstyle=\tiny\color{gray},
-    captionpos=b,
-    frame=tb,
-    basicstyle=\footnotesize\ttfamily,
-    keywordstyle=\bfseries\color{green!40!black},
-    commentstyle=\itshape\color{blue!40!black},
-    identifierstyle=\color{black},
-    backgroundcolor=\color{white},
+  language=Python,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue!40!black}\bfseries,
+  commentstyle=\itshape\color{green!40!black},
+  stringstyle=\color{red!40!black},
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  frame=single,
+  breaklines=true,
+  tabsize=2,
+  numbersep=-10pt,
+  captionpos=b,
+  belowcaptionskip=1\baselineskip,
+  frame = tb,
+  identifierstyle=\color{black},
+  backgroundcolor=\color{white},
 }
 \lstset{style=mystyle}
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{5pt}
 
-% TODO: ------------------------------------------
 % Metadata
 \definecolor{sapienzared}{HTML}{000000}
 \hypersetup{pdftitle={Thesis},pdfauthor={Andrea Spinelli}, urlcolor=sapienzared, linkcolor=sapienzared, colorlinks=true, citecolor=sapienzared}
 \title{Allineamento, Denoising e Stacking di immagini $\\$lunari mediante tecniche tradizionali e Unsharp $\\$Masking basato su Deep Learning}
 \author{Andrea Spinelli}
 \IDnumber{1985877}
-\course{Laurea  Triennale in Ingegneria Informatica}
+\course{Laurea Triennale in Ingegneria Informatica}
 \courseorganizer{Facoltà di Ingegneria dell'Informazione, Informatica e Statistica}
 \AcademicYear{2023/2024}
 \advisor{Prof. Thomas Alessandro Ciarfuglia}
