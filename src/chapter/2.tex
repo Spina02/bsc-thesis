@@ -122,7 +122,7 @@ Questo processo (illustrato in figura \ref{fig:calibration})  permette di ottene
 
 L'allineamento delle immagini è un passaggio cruciale nell'elaborazione delle immagini lunari, necessario per compensare eventuali spostamenti o rotazioni tra gli scatti e per combinare efficacemente più immagini tramite tecniche di \textit{stacking}. Questo processo si basa sull'identificazione di punti caratteristici comuni tra le immagini e sul calcolo delle trasformazioni geometriche necessarie (nel nostro caso \hyperref[subsec:homography]{trasformazioni omografiche}) per sovrapporle perfettamente. L'allineamento delle immagini può essere eseguito manualmente, ma è preferibile utilizzare algoritmi automatici per garantire una maggiore precisione e riproducibilità.
 
-\subsection{Feature Detection e Matching ORB, SIFT e SURF} \label{subsec:feature_detectoion}
+\subsection{Feature Detection e Matching ORB, SIFT e SURF} \label{subsec:feature_detection}
 
 Gli algoritmi di \textit{feature detection} e \textit{matching} individuano punti di interesse nei distintivi nelle immagini, come bordi, angoli o altre caratteristiche uniche, e calcolando descrittori che rappresentano l'intensità locale attorno a ciascun punto. Successivamente, i descrittori vengono confrontati per trovare corrispondenze tra i punti di interesse delle diverse immagini, consentendo di determinare le trasformazioni geometriche necessarie per allineare le immagini.
 
@@ -443,11 +443,11 @@ Per superare queste limitazioni, è stata utilizzata la tecnica \textbf{CLACHE} 
 \begin{algorithm}[H]
     \caption{\texttt{- Equalizzazione dell'istogramma con CLACHE}:\\ Data un'immagine $I$, l'algoritmo restituisce l'immagine equalizzata $Out$.} \label{alg:clache}
     \begin{algorithmic}
-        \Function{clache}{$I, \text{tile\_size}, \text{clip\_limit}$}
+        \Function{enhance\_contrast}{$I, \text{clip\_limit}, \text{tile\_grid\_size}$}
             \State $I_{\text{CLAHE}} \gets$ \text{Inizializza un'immagine vuota}
             \State $I_{\text{LAB}} \gets$ Converti $I$ in spazio colore LAB
             \State $L, A, B \gets$ Estrai i canali L, A, B da $I_{\text{LAB}}$
-            \State $C \gets$ \text{Inizializza un'oggetto} CLACHE \text{con} tile\_size \text{e} clip\_limit
+            \State $C \gets$ \text{Inizializza un'oggetto} CLACHE \text{con} tile\_grid\_size \text{e} clip\_limit
             \State $L_{\text{CLAHE}} \gets C.apply\_CLAHE(L)$ \Comment{Applica CLACHE al canale L}
             \State $I_{\text{CLAHE}} \gets$ Combina $L_{\text{CLAHE}}$, $A$ e $B$ in un'immagine
             \State \textbf{return} $I_{\text{CLAHE}}$
@@ -457,13 +457,11 @@ Per superare queste limitazioni, è stata utilizzata la tecnica \textbf{CLACHE} 
 
 Lo spazio LAB è un modello di colore che separa la luminosità ($L$) dal colore ($A$ e $B$), rendendo più semplice l'applicazione di tecniche di miglioramento del contrasto e della luminosità. L'equalizzazione dell'istogramma viene applicata solo al canale $L$, che rappresenta la luminosità dell'immagine, mentre i canali $A$ e $B$ rimangono inalterati. Questo permette di migliorare il contrasto e la luminosità dell'immagine senza influenzare il colore.
 
-Tramite \texttt{clip\_limit} e \texttt{tile\_size} è possibile regolare il contrasto e la dimensione delle regioni su cui applicare l'equalizzazione dell'istogramma. Un \texttt{clip\_limit} più alto aumenta il contrasto, mentre un \texttt{tile\_size} più piccolo permette di equalizzare dettagli più fini.
+Tramite \texttt{clip\_limit} e \texttt{tile\_grid\_size} è possibile regolare il contrasto e la dimensione delle regioni su cui applicare l'equalizzazione dell'istogramma. Un \texttt{clip\_limit} più alto aumenta il contrasto, mentre un \texttt{tile\_grid\_size} più piccolo permette di equalizzare dettagli più fini.
 
 \subsection{Bilanciamento del colore} \label{subsec:color_balance}
 
-\textbf{DA SISTEMARE}
-
-Nel contesto dell'astrofotografia lunare, il bilanciamento del colore è generalmente meno critico rispetto ad altre forme di fotografia, poiché la luna appare prevalentemente in toni di grigio. Tuttavia, il bilanciamento del colore può essere utile per correggere il colore dell'immagine e migliorare la qualità visiva, evidenziando lievi variazioni cromatiche dovute alla composizione minerale sulla superficie. Esistono diversi metodi per il bilanciamento del colore:
+Nel contesto dell'astrofotografia lunare, il bilanciamento del colore è generalmente meno critico rispetto ad altre forme di fotografia, poiché la luna appare prevalentemente in toni di grigio. Tuttavia, può essere utile per correggere tonalità dell'immagine e migliorare la qualità visiva, evidenziando lievi variazioni cromatiche dovute alla composizione minerale sulla superficie. Esistono diversi metodi per il bilanciamento del colore:
 
 \begin{itemize}
     \item \textbf{Correzione automatica del bilanciamento del bianco}: utilizza algoritmi di bilanciamento del bianco automatici per correggere il colore dell'immagine in base alla temperatura del colore. Questo metodo è utile per correggere il colore in modo rapido e semplice.
@@ -471,13 +469,63 @@ Nel contesto dell'astrofotografia lunare, il bilanciamento del colore è general
     \item \textbf{Correzione del colore selettiva}: permette di regolare selettivamente i toni, la saturazione e la luminosità di specifici colori nell'immagine. Questo metodo è utile per migliorare il colore e il contrasto di parti specifiche dell'immagine.
 \end{itemize}
 
-Nell'ambito di questo progetto, è stato utilizzato un metodo di bilanciamento del colore automatico per correggere il colore dell'immagine in modo rapido e semplice. L'algoritmo per la correzione automatica del bilanciamento del bianco è riportato nell'\cref{alg:white_balance}.
+Per questo progetto, è stato adottato un metodo di bilanciamento del colore automatico basato sull'assunzione delle \textbf{Shades of Gray} (tonalità di grigio). Questo approccio presuppone che l'immagine abbia una distribuzione equilibrata delle tonalità di grigio, permettendo di correggere le deviazioni cromatiche tramite la normalizzazione dei canali di colore \cite{shades_of_gray}. I passaggi principali sono i seguenti:
+
+\begin{enumerate}
+    \item \textbf{Calcolo della media normalizzata per ciascun canale}: Per ogni canale di colore (RGB), si calcola la media dei valori dei pixel elevati a una potenza specificata ($p$). Questa operazione enfatizza i valori più alti, riducendo l'influenza dei pixel più scuri.
+    $$
+    S[c] = \left(\dfrac{1}{M \times N} \sum_{x=1}^{M} \sum_{y=1}^{N} I(x,y,c)^{p} \right)^{1/p}
+    $$
+    \item \textbf{Calcolo della media delle \texttt{norm\_values}}: Si calcola la media delle medie normalizzate ottenute per ciascun canale. Questo valore rappresenta il target di normalizzazione per ogni canale.
+
+    $$
+    \mu = \dfrac{1}{3} \sum_{c=1}^{3} S[c]
+    $$
+
+    \item \textbf{Calcolo dei fattori di scala}: Per ogni canale, si determina un fattore di scala che normalizza la media del canale rispetto alla media complessiva. Questo assicura che ciascun canale contribuisca equamente alla tonalità di grigio finale.
+    
+    $$
+    f[c] = \dfrac{\mu}{S[c]}
+    $$
+    
+    \item \textbf{Applicazione dei fattori di scala}: Si moltiplicano i valori dei pixel di ogni canale per il rispettivo fattore di scala, correggendo le deviazioni cromatiche.
+    
+    $$
+    Out(x,y,c) = I(x,y,c) \times f[c]
+    $$
+    
+    \item \textbf{Clipping dei valori}: Infine, si assicura che i valori dei pixel rimangano nel range $[0, 1]$ per evitare distorsioni cromatiche.
+    
+    $$
+    Out = \text{clip}(Out, 0, 1)
+    $$
+
+\end{enumerate}
+
+
+Questa tecnica garantisce che l'immagine risultante abbia una distribuzione equilibrata delle tonalità di grigio, correggendo automaticamente le deviazioni cromatiche senza richiedere interventi manuali.
+Lo pseudocodice che racchiude questi passaggi è riportato nell'\cref{alg:shades_of_gray}.
 
 \begin{algorithm}[H]
-    \caption{\texttt{- Correzione automatica del bilanciamento del bianco}:\\ Data un'immagine $I$, l'algoritmo restituisce l'immagine con il bilanciamento del bianco corretto $Out$.} \label{alg:white_balance}
+    \caption{\texttt{- Shades of Gray - bilanciamento del colore}:\\ Data un'immagine $I$, l'algoritmo restituisce l'immagine bilanciata $Out$.} \label{alg:shades_of_gray}
     \begin{algorithmic}[1]
-        \Function{white\_balance}{$I$}
-            \State TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        \Function{shades\_of\_gray}{$I, p=6$}
+            \State $M, N \gets$ dimensioni di $I$
+            \State $S \gets$ inizializza vettore per le norme
+            \For{$c \gets 1$ to $3$} \Comment{Per ogni canale RGB}
+                \State $S[c] \gets \left(\dfrac{1}{M \times N} \sum_{x=1}^{M} \sum_{y=1}^{N} I(x,y,c)^p \right)^{1/p}$ 
+            \EndFor
+            \State $\mu \gets \dfrac{1}{3} \sum_{c=1}^{3} S[c]$ \Comment{Media delle norme}
+            \For{$c \gets 1$ to $3$}
+                \State $f[c] \gets \mu / S[c]$ \Comment{Fattori di scala}
+                \For{$x \gets 1$ to $M$}
+                    \For{$y \gets 1$ to $N$}
+                        \State $Out(x,y,c) \gets I(x,y,c) \times f[c]$ \Comment{Applica bilanciamento}
+                    \EndFor
+                \EndFor
+            \EndFor
+            \State $Out \gets \text{clip}(Out, 0, 1)$ \Comment{Limita valori tra 0 e 1}
+            \State \textbf{return} $Out$
         \EndFunction
     \end{algorithmic}
 \end{algorithm}

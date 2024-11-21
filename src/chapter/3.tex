@@ -1,22 +1,51 @@
 \chapter{Implementazione} \label{chap:implementation}
 
-In questo capitolo verrà descritta l'implementazione del software sviluppato per l'elaborazione di immagini lunari. In particolare, verranno presentate le scelte progettuali e le soluzioni adottate per la realizzazione delle funzionalità di calibrazione, allineamento, pre-processing, stacking e post-processing affrontate nel \cref{chap:techniques}. I codici riportati in questo capitolo sono solo delle parti significative del software, alle quali sono spesso state rimosse diverse linee dove venivano effettuati controlli aggiuntivi o operazioni di supporto. Per una visione completa si rimanda al repository \href{https://github.com/Spina02/Moon-Stacker.git}{GitHub} del progetto.
+In questo capitolo verrà descritta l'implementazione del software sviluppato per l'elaborazione di immagini lunari. In particolare, verranno presentate le scelte progettuali e le soluzioni adottate per la realizzazione delle funzionalità di calibrazione, allineamento, pre-processing, stacking e post-processing affrontate nel \cref{chap:techniques}. I frammenti di codice riportati in questo capitolo rappresentano solo le parti più significative del software; in molti casi sono state omesse linee di controllo o operazioni di supporto per ragioni di brevità. Per una visione completa si rimanda al repository \href{https://github.com/Spina02/Moon-Stacker.git}{GitHub} del progetto.
 
 \section{Architettura del software} \label{sec:architecture}
 
-Il software è stato sviluppato in linguaggio Python, utilizzando principalmente le librerie OpenCV e NumPy per la manipolazione delle immagini. La struttura del software è stata organizzata in moduli, ognuno dei quali si occupa di una specifica funzionalità.
+Il software è stato sviluppato in linguaggio Python, utilizzando principalmente le librerie OpenCV e NumPy per la manipolazione delle immagini.
 
-Il file config.py contiene la definizione di alcuni flags (come DEBUG), variabili che contengono path alle cartelle utilizzate (input, output, bias, dark, flat, ...), e alcune funzioni per iniziare tali variabili e le metriche.
 
-All'interno di \texttt{image.py} sono presenti 
+\begin{multicols}{2}
+
+    Il progetto segue una struttura modulare, con un file principale \texttt{main.py} che coordina l'esecuzione delle funzioni dei vari moduli. L'inizializzazione delle variabili e dei parametri avviene nel file \texttt{config.py}, che contiene la definizione di alcuni flag (come \texttt{DEBUG}), i percorsi delle cartelle utilizzate (input, output, bias, dark, flat, ecc.) e alcune funzioni per l'inizializzazione delle variabili e delle metriche. La pipeline di elaborazione delle immagini è descritta nel file \texttt{process.py}, che si occupa di chiamare le funzioni di calibrazione (\texttt{calibration.py}), allineamento (\texttt{align.py}), denoising (\texttt{denoise.py}), stacking (\texttt{stacking.py}) e, infine, le operazioni di pre-processing e post-processing (\texttt{enhancement.py}).
+
+    \columnbreak
+
+    \begin{verbatim}
+         
+        src/
+        |-- align.py
+        |-- analysis.py
+        |-- calibration.py
+        |-- config.py
+        |-- denoise.py
+        |-- enhancement.py
+        |-- grid_search.py
+        |-- image.py
+        |-- main.py
+        |-- metrics.py
+        |-- model.pth
+        |-- process.py
+        |-- stacking.py
+        '-- utils.py
+    \end{verbatim}
+
+    \end{multicols}
+
+Il modulo \texttt{utils.py} contiene alcune funzioni di ausiliarie (ad esempio, per creare cartelle di destinazione se non esistenti). All'interno di \texttt{image.py} sono presenti funzioni di utilità per la manipolazione delle immagini, come il caricamento, il salvataggio e la visualizzazione. Inoltre, nel file \texttt{metrics.py} sono presenti funzioni per il calcolo di metriche come il contrasto e la luminosità di un'immagine, e metriche di qualità come \texttt{BRISQUE}, \texttt{NIQE} e \texttt{LIQE}, affrontate più nel dettaglio nel \cref{chap:evaluation}
+
+Di seguito vengono descritte più nel dettaglio le implementazioni delle funzionalità principali del software.
 
 \subsection{Calibrazione} \label{subsec:calibration_impl}
 
-La fase di calibrazione è stata implementata nel file \texttt{calibration.py}. Qui sono definiti i metodi pef calcolare i master bias, dark e flat, e quello per applicare la calibrazione alle immagini.
+La fase di calibrazione è stata implementata nel file \texttt{calibration.py}, dove sono definiti i metodi per calcolare i \textit{master bias}, \textit{dark} e \textit{flat}, e quello per applicare la calibrazione alle immagini.
 
-I metodi per calcolare i masters sono ripostati qui sotto seguono la procedura descritta negli algoritmi \ref{alg:bias}, \ref{alg:dark} e \ref{alg:flat}.
+I metodi per calcolare i master seguono la procedura descritta negli algoritmi \ref{alg:bias}, \ref{alg:dark} e \ref{alg:flat} e sono riportati di seguito:
 
 \begin{lstlisting}
+    [label={lst:calculate_masters}]
     # Function to calculate the master bias
     def calculate_master_bias(bias):
         # Calculate the mean
@@ -35,16 +64,19 @@ I metodi per calcolare i masters sono ripostati qui sotto seguono la procedura d
         # Subtract master bias and dark, then calculate the mean
         master_flat = np.mean(flat-master_bias-master_dark, axis=0)   
         # Normalize the master flat
-        if np.mean(master_flat) != 0: master_flat /= np.mean(master_flat)
+        mean_flat = np.mean(master_flat)
+        if mean_flat != 0: master_flat /= mean_flat
         
         return master_flat
 \end{lstlisting}
 
-Queste funzioni vengono chiamate da una funzione ausiliaria (\texttt{calculate\_masters}) che, prima di calcolare i masters, controlla se i frame di calibrazione sono stati caricati correttamente e se hanno le stesse dimensioni delle immagini da calibrare. In caso contrario, viene sollevata un'eccezione. Inoltre, se per un tipo di frames di calibrazione il numero di frames tipo è inferiore ad una certa soglia \texttt{MIN\_CALIBRATION} specificata nel file di configurazione, il master corrispondente non viene calcolato e viene stampato un messaggio di warning, in quanto con troppi pochi frames il calcolo potrebbe non essere affidabile e introdurre nuovi artefatti.
+Queste funzioni calcolano rispettivamente i master bias, dark e flat, utilizzando la media su tutti i frame di calibrazione disponibili. Se i master bias o dark non sono disponibili, vengono inizializzati a matrici di zeri della stessa dimensione delle immagini di calibrazione. Nel caso di \texttt{calculate\_master\_flat}, dopo aver sottratto il master bias e il master dark, si normalizza il master flat dividendo per la sua media, a condizione che questa sia diversa da zero.
 
-Questa fase risulta compiutazionalmente molto onerosa, in quanto richiede il caricamento di tutti i frame di calibrazione in memoria, e il calcolo dei master richiede l'elaborazione di ogni singolo pixel di ogni frame. Per questo motivo, è stata implementata la possibilità di salvare i master calcolati su file, in modo da poterli riutilizzare senza doverli ricalcolare ogni volta.
+Le funzioni tre funzioni sopra definite vengono chiamate da una funzione ausiliaria (\texttt{calculate\_masters}) che, prima di calcolare i masters, verifica se i frame di calibrazione sono stati caricati correttamente e se hanno le stesse dimensioni delle immagini da calibrare; in caso contrario, viene sollevata un'eccezione. Inoltre, se per un tipo di frames di calibrazione il numero di immagini disponibili è inferiore a una certa soglia \texttt{MIN\_CALIBRATION} specificata nel file di configurazione, il master corrispondente non viene calcolato e viene stampato un messaggio di avviso, poiché con troppi pochi frames il calcolo potrebbe non essere affidabile e introdurre nuovi artefatti.
 
-Il metodo per calibrare una singola immagine fa riferimentop all'\cref{alg:calibration}. L'implementazione è la seguente:
+Questa fase risulta compiutazionalmente onerosa, in quanto richiede il caricamento di tutti i frame di calibrazione in memoria, e il calcolo dei master implica l'elaborazione di ogni singolo pixel di ogni frame. Per questo motivo, è stata implementata la possibilità di salvare i master calcolati su file, in modo da poterli riutilizzare senza doverli ricalcolare ogni volta.
+
+Il metodo per calibrare una singola immagine fa riferimento all'\cref{alg:calibration}. L'implementazione è la seguente:
 
 \begin{lstlisting}
     # Function to calibrate a single image
@@ -60,11 +92,100 @@ Il metodo per calibrare una singola immagine fa riferimentop all'\cref{alg:calib
         calibrated = np.clip(calibrated, 0, 1)  # Clip to valid range
         return calibrated
 \end{lstlisting}
-    
-Dove, sia nel calcolo dei masters, che nella calibrazione di una singola immagine, vi è la possibilità di non utilizzare uno o più set di frame di calibrazione, nel caso in cui non siano disponibili.
-Inoltre è stata utilizzata la funzione \texttt{clip} di \texttt{numpy} per assicurarsi che i valori dell'immagine risultante siano compresi tra 0 e 1.
+
+Nella funzione \texttt{calibrate\_single\_image}, si procede alla calibrazione dell'immagine sottraendo il master bias e il master dark, e dividendo per il master flat. Se uno dei master non è disponibile, viene inizializzato a una matrice di zeri (per bias e dark) o di uni (per flat) della stessa dimensione dell'immagine. In questo modo, sia nel calcolo dei master, sia nella calibrazione di una singola immagine, è possibile non utilizzare uno o più set di frame di calibrazione nel caso in cui non siano disponibili. Infine, si utilizza la funzione \texttt{np.clip} di \texttt{NumPy} per assicurarsi che i valori dell'immagine risultante siano compresi nell'intervallo [0, 1].
 
 \subsection{Allineamento} \label{subsec:alignment_impl}
+
+La fase di allineamento delle immagini è stata implementata nel file \texttt{align.py}. Qui sono definite le funzioni necessarie per allineare le immagini utilizzando algoritmi di \textit{feature detection} e \textit{feature matching} come ORB, SIFT e SURF, come descritto nella \cref{subsec:feature_detection}. L'allineamento è fondamentale per compensare eventuali spostamenti o rotazioni tra gli scatti, garantendo una sovrapposizione precisa delle immagini durante la ase di \textit{stacking}.
+
+Lafunzione principale per l'allineamento è \texttt{align\_images}, che prende in input una lista di immagini e restituisce una lista di immagini allineate. L'implementazione è la seguente:
+
+\begin{lstlisting}[label={lst:alignment}]
+    def align_images(images, algo='orb', nfeatures=5000):
+        # Choose the feature detection algorithm
+        if algo == 'orb':
+            detector = cv2.ORB_create(nfeatures=nfeatures)
+        elif algo == 'sift':
+            detector = cv2.SIFT_create(nfeatures=nfeatures)            
+        elif algo == 'surf':
+            detector = cv2.xfeatures2d.SURF_create()
+        # Choose the norm for the matcher
+        norm = cv2.NORM_HAMMING if algo == 'orb' else cv2.NORM_L2
+        # Create a matcher object
+        matcher = cv2.BFMatcher.create(norm)
+
+        # The first image is the reference image
+        ref_image = images[0]
+        aligned_images = [ref_image]
+
+        # Enhance the reference image to improve alignment
+        enhanced_ref = pre_align_enhance(ref_image)
+
+        # Detect keypoints and descriptors for the reference image
+        ref_kp, ref_des = detector.detectAndCompute(to_8bit(enhanced_ref), None)
+        ref_shape = (ref_image.shape[1], ref_image.shape[0])
+
+        # Align each image to the reference image
+        for idx, image in enumerate(images[1:]):
+            aligned_image = align_image(image, enhanced_ref, ref_kp, ref_des, ref_shape, detector, matcher)
+            aligned_images.append(aligned_image)
+
+        return aligned_images
+\end{lstlisting}
+
+La funzione \texttt{align\_images} prende in input una lista di immagini, un algoritmo di feature detection (\texttt{algo}) e il numero di features da estrarre (\texttt{nfeatures}). Inizialmente, si crea un oggetto \texttt{detector} in base all'algoritmo scelto, e un oggetto \texttt{matcher} per effettuare il matching delle features. Si inizializza la lista \texttt{aligned\_images} con la prima immagine della lista, che fungerà da immagine di riferimento. Si procede quindi a migliorare la qualità dell'immagine di riferimento tramite la funzione \texttt{pre\_align\_enhance} (\cref{lst:pre_align_enhance}), dopo riportata. Si estraggono quindi i keypoints e i descrittori dell'immagine di riferimento, e si calcola la sua forma. Infine, si allineano le immagini della lista rispetto all'immagine di riferimento utilizzando la funzione \texttt{align\_image}, che prende in input l'immagine da allineare, i keypoints e i descrittori dell'immagine di riferimento, la sua forma, l'oggetto \texttt{detector} e il \texttt{matcher}.
+
+\begin{lstlisting}[label={lst:single_alignment}]
+    def align_image(image, ref_kp, ref_des, detector, matcher):
+        # Enhance the image for alignment process
+        aligned_image = pre_align_enhance(image)
+
+        # Find keypoints and descriptors for the image
+        kp, des = detector.detectAndCompute(to_8bit(aligned_image), None)
+
+        # Match the descriptors
+        matches = matcher.knnMatch(ref_des, des, k=2)
+        # Apply ratio test to filter good matches
+        matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
+
+        # Compute the homography
+        ref_pts = np.float32([ref_kp[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+        img_pts = np.float32([kp[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+        H, _ = cv2.findHomography(img_pts, ref_pts, cv2.RANSAC, 10.0, maxIters=3000, confidence=0.995)
+
+        shape = image.shape[1], image.shape[0]
+        
+        # Warp the original image using the final homography
+        aligned_image = cv2.warpPerspective(image, H, shape, flags=cv2.INTER_LANCZOS4)
+
+        return aligned_image
+\end{lstlisting}
+
+L'algoritmo \texttt{pre\_align\_enhance} utilizzato per migliorare le immagini prima di estrarne i keypoints svolge 3 compiti:
+
+\begin{itemize}
+    \item \textbf{Rendere la foto in bianco e nero} (se non lo è già): questo è utile in quanto, riducendo l'immagine ad un solo canale, viene alleggerito il carico computazionale per l'estrazione dei keypoints e dei descrittori, oltre a rendere il processo di estrazione delle features più robusto a variazioni cromatiche.
+    
+    \item \textbf{Miglioramento del contrasto}: questo passaggio, effettuato tramite l'applicazione dell'\cref{alg:clache}, è utile per migliorare la qualità dell'immagine, rendendo più nitidi i dettagli e facilitando l'estrazione delle features.
+    
+    \item \textbf{Rimozione dello sfondo}: per facilitare l'estrazione delle features, si è scelto di rimuovere lo sfondo dell'immagine, che potrebbe contenere rumore o dettagli non rilevanti. Questo passaggio è stato implementato tramite la funzione \texttt{soft\_threshold} (\cref{lst:pre_align_enhance}), che applica una sogliatura morbida all'immagine.
+\end{itemize}
+
+L'implementazione dell'algoritmo è riportata di seguito, mentre le implementazioni di \texttt{soft\_threshold} e \texttt{enhance\_contrast}  sono riportate nella \cref{subsec:preprocessing_impl}.
+
+\begin{lstlisting}[label={lst:pre_align_enhance}]
+    def pre_align_enhance(image, clip_limit = 0.8, tile_grid_size = (20,20), thr = 0.05):
+        # Convert image to grayscale
+        enhanced = image.copy()
+        if len(image.shape) == 3:
+            enhanced = cv2.cvtColor(enhanced, cv2.COLOR_RGB2GRAY)
+        # Enhance contrast using CLACHE
+        enhanced = enhance_contrast(enhanced, clip_limit, tile_grid_size)
+        # Remove background using a threshold
+        enhanced = soft_threshold(enhanced, thr)
+        return enhanced
+\end{lstlisting}
 
 \subsection{Pre-processing} \label{subsec:preprocessing_impl}
 
