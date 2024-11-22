@@ -29,7 +29,7 @@ Il software è stato sviluppato in linguaggio Python, utilizzando principalmente
         |-- model.pth
         |-- process.py
         |-- stacking.py
-        '-- utils.py
+        `-- utils.py
     \end{verbatim}
 
     \end{multicols}
@@ -66,7 +66,6 @@ I metodi per calcolare i master seguono la procedura descritta negli algoritmi \
         # Normalize the master flat
         mean_flat = np.mean(master_flat)
         if mean_flat != 0: master_flat /= mean_flat
-        
         return master_flat
 \end{lstlisting}
 
@@ -97,21 +96,53 @@ Nella funzione \texttt{calibrate\_single\_image}, si procede alla calibrazione d
 
 \subsection{Allineamento} \label{subsec:alignment_impl}
 
-La fase di allineamento delle immagini è stata implementata nel file \texttt{align.py}. Qui sono definite le funzioni necessarie per allineare le immagini utilizzando algoritmi di \textit{feature detection} e \textit{feature matching} come ORB, SIFT e SURF, come descritto nella \cref{subsec:feature_detection}. L'allineamento è fondamentale per compensare eventuali spostamenti o rotazioni tra gli scatti, garantendo una sovrapposizione precisa delle immagini durante la ase di \textit{stacking}.
+La fase di allineamento delle immagini è stata implementata nel file \texttt{align.py}. Qui sono definite le funzioni necessarie per allineare le immagini utilizzando algoritmi di \textit{feature detection} e \textit{feature matching} come ORB, SIFT e SURF, e RANSAC per il calcolo della trasformazione omografica, come già affrontatp nella \cref{subsec:feature_detection}. L'allineamento è fondamentale per compensare eventuali spostamenti o rotazioni tra gli scatti, garantendo una sovrapposizione precisa delle immagini durante la fase di \textit{stacking}.
 
-Lafunzione principale per l'allineamento è \texttt{align\_images}, che prende in input una lista di immagini e restituisce una lista di immagini allineate. L'implementazione è la seguente:
+Per migliorare i risultati dell'allineamento, le immagini passano prima attraverso una funzione di pre-processing che ne ottimizza la qualità prima dell'estrazione delle feature. Questa funzione è stata implementata nel file \texttt{enhancement.py} e svolge essenzialmente tre compiti:
+
+\begin{enumerate}
+    \item \textbf{Convertire la foto in scala di grigi} (se non lo è già): riducendo l'immagine a un solo canale, si alleggerisce il carico computazionale per l'estrazione dei keypoint e dei descrittori, oltre a rendere il processo più robusto a variazioni cromatiche.
+    
+    \item \textbf{Rimozione dello sfondo}: per facilitare l'estrazione delle features, si è scelto di rimuovere lo sfondo dell'immagine, che potrebbe contenere rumore o dettagli non rilevanti. Questo passaggio è stato implementato tramite la funzione \texttt{soft\_threshold} (\cref{alg:remove_background}), che applica una sogliatura morbida all'immagine, mantenendo solo i pixel con intensità superiore ad una certa soglia \texttt{thr}.
+    
+    \item \textbf{Miglioramento del contrasto}: questo passaggio, effettuato tramite l'applicazione dell'\cref{alg:clache}, è utile per migliorare la qualità dell'immagine, rendendo più nitidi i dettagli e facilitando l'estrazione delle features.
+\end{enumerate}
+
+Inoltre, poiché gli algoritmi di OpenCV richiedono immagini in formato a 8 bit, è stata implementata una funzione \texttt{to\_8bit} che converte l'immagine in un formato a 8 bit, normalizzando i valori dei pixel nell'intervallo [0, 255].
+
+L'implementazione dell'algoritmo è riportata di seguito, mentre le implementazioni di \texttt{soft\_threshold} e \texttt{enhance\_contrast}  sono riportate nella \cref{subsec:preprocessing_impl}.
+
+\begin{lstlisting}[label={lst:pre_align_enhance}]
+    def pre_align_enhance(image, clip_limit = 0.8, tile_grid_size = (20,20), thr = 0.05):
+        # Convert image to grayscale
+        enhanced = image.copy()
+        if len(image.shape) == 3:
+            enhanced = cv2.cvtColor(enhanced, cv2.COLOR_RGB2GRAY)
+        # Remove background using a threshold
+        enhanced = soft_threshold(enhanced, thr)
+        # Enhance contrast using CLACHE
+        enhanced = enhance_contrast(enhanced, clip_limit, tile_grid_size)
+        enhanced = to_8bit(enhanced)
+        return enhanced
+\end{lstlisting}
+
+La funzione principale per l'allineamento è \texttt{align\_images}. Tale funzione prende in input una lista di immagini \texttt{images} e restituisce una lista di immagini allineate \texttt{aligned}. I due parametri opzionali \texttt{method} e \texttt{nfeatures} permettono di specificare l'algoritmo di feature detection da utilizzare (tra \texttt{orb}, \texttt{sift} e \texttt{surf}) e il numero di features da estrarre. I valori di default sono rispettivamente \texttt{orb} e \texttt{5000}.
+
+La funzione \texttt{align\_images} inizialmente crea un oggetto \texttt{detector} e un oggetto \texttt{matcher} in base all'algoritmo scelto per effettuare l'estrazione e il matching delle feature. Inizializza la lista \texttt{aligned\_images} con la prima immagine della lista, che fungerà da immagine di riferimento. Si procede quindi a migliorare quest'ultima tramite la funzione \texttt{pre\_align\_enhance}, sopra riportata. Si estraggono quindi i keypoint e i descrittori dell'immagine di riferimento, che saranno necessari per calcolare l'allineamento di tutte le altre immagini utilizzando la funzione \texttt{align\_image}. Infine, si restituisce la lista di immagini allineate.
+
+L'implementazione è la seguente:
 
 \begin{lstlisting}[label={lst:alignment}]
-    def align_images(images, algo='orb', nfeatures=5000):
+    def align_images(images, method='orb', nfeatures=5000):
         # Choose the feature detection algorithm
-        if algo == 'orb':
+        if method == 'orb':
             detector = cv2.ORB_create(nfeatures=nfeatures)
-        elif algo == 'sift':
+        elif method == 'sift':
             detector = cv2.SIFT_create(nfeatures=nfeatures)            
-        elif algo == 'surf':
+        elif method == 'surf':
             detector = cv2.xfeatures2d.SURF_create()
         # Choose the norm for the matcher
-        norm = cv2.NORM_HAMMING if algo == 'orb' else cv2.NORM_L2
+        norm = cv2.NORM_HAMMING if method == 'orb' else cv2.NORM_L2
         # Create a matcher object
         matcher = cv2.BFMatcher.create(norm)
 
@@ -123,7 +154,7 @@ Lafunzione principale per l'allineamento è \texttt{align\_images}, che prende i
         enhanced_ref = pre_align_enhance(ref_image)
 
         # Detect keypoints and descriptors for the reference image
-        ref_kp, ref_des = detector.detectAndCompute(to_8bit(enhanced_ref), None)
+        ref_kp, ref_des = detector.detectAndCompute(enhanced_ref, None)
         ref_shape = (ref_image.shape[1], ref_image.shape[0])
 
         # Align each image to the reference image
@@ -134,7 +165,23 @@ Lafunzione principale per l'allineamento è \texttt{align\_images}, che prende i
         return aligned_images
 \end{lstlisting}
 
-La funzione \texttt{align\_images} prende in input una lista di immagini, un algoritmo di feature detection (\texttt{algo}) e il numero di features da estrarre (\texttt{nfeatures}). Inizialmente, si crea un oggetto \texttt{detector} in base all'algoritmo scelto, e un oggetto \texttt{matcher} per effettuare il matching delle features. Si inizializza la lista \texttt{aligned\_images} con la prima immagine della lista, che fungerà da immagine di riferimento. Si procede quindi a migliorare la qualità dell'immagine di riferimento tramite la funzione \texttt{pre\_align\_enhance} (\cref{lst:pre_align_enhance}), dopo riportata. Si estraggono quindi i keypoints e i descrittori dell'immagine di riferimento, e si calcola la sua forma. Infine, si allineano le immagini della lista rispetto all'immagine di riferimento utilizzando la funzione \texttt{align\_image}, che prende in input l'immagine da allineare, i keypoints e i descrittori dell'immagine di riferimento, la sua forma, l'oggetto \texttt{detector} e il \texttt{matcher}.
+La funzione \texttt{align\_image} funzione prende in input l'immagine da allineare \texttt{image}, i keypoint \texttt{ref\_kp} e i descrittori \texttt{ref\_des} dell'immagine di riferimento, l'oggetto \texttt{detector} e il \texttt{matcher}, e restituisce l'immagine allineata con quella di riferimento.
+
+Per allineare l'immagine, si procede come segue:
+
+\begin{enumerate}
+    \item Si applica la funzione \texttt{pre\_align\_enhance} all'immagine da allineare, per migliorarne la qualità.
+    \item Si estraggono i keypoints e i descrittori dell'immagine da allineare utilizzando il \texttt{detector} scelto.
+    \item Si effettua il matching dei descrittori tra l'immagine di riferimento e quella da allineare.
+    \item Si applica il \textit{ratio test} per filtrare i buoni match.
+    $$
+    \text{matches} = \{m \in \text{matches} \mid m.\text{distance} < 0.75 \cdot n.\text{distance}\}
+    $$
+    \item Si calcola l'omografia tra i keypoints dell'immagine di riferimento e quelli dell'immagine da allineare. Nel mio caso ho scelto di utilizzare interpolazione \texttt{INTER\_LANCZOS4}, molto utilizzata in astrofotografia per la sua capacità di preservare i dettagli.
+    \item Si applica la trasformazione omografica all'immagine da allineare.
+\end{enumerate}
+
+L'implementazione di \texttt{align\_image} è riportata qui sotto:
 
 \begin{lstlisting}[label={lst:single_alignment}]
     def align_image(image, ref_kp, ref_des, detector, matcher):
@@ -142,56 +189,138 @@ La funzione \texttt{align\_images} prende in input una lista di immagini, un alg
         aligned_image = pre_align_enhance(image)
 
         # Find keypoints and descriptors for the image
-        kp, des = detector.detectAndCompute(to_8bit(aligned_image), None)
+        kp, des = detector.detectAndCompute(aligned_image, None)
 
-        # Match the descriptors
+        # Match the descriptors and filter the matches
         matches = matcher.knnMatch(ref_des, des, k=2)
-        # Apply ratio test to filter good matches
         matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
-
+        
         # Compute the homography
         ref_pts = np.float32([ref_kp[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
         img_pts = np.float32([kp[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
         H, _ = cv2.findHomography(img_pts, ref_pts, cv2.RANSAC, 10.0, maxIters=3000, confidence=0.995)
-
         shape = image.shape[1], image.shape[0]
         
         # Warp the original image using the final homography
         aligned_image = cv2.warpPerspective(image, H, shape, flags=cv2.INTER_LANCZOS4)
-
         return aligned_image
 \end{lstlisting}
 
-L'algoritmo \texttt{pre\_align\_enhance} utilizzato per migliorare le immagini prima di estrarne i keypoints svolge 3 compiti:
-
-\begin{itemize}
-    \item \textbf{Rendere la foto in bianco e nero} (se non lo è già): questo è utile in quanto, riducendo l'immagine ad un solo canale, viene alleggerito il carico computazionale per l'estrazione dei keypoints e dei descrittori, oltre a rendere il processo di estrazione delle features più robusto a variazioni cromatiche.
-    
-    \item \textbf{Miglioramento del contrasto}: questo passaggio, effettuato tramite l'applicazione dell'\cref{alg:clache}, è utile per migliorare la qualità dell'immagine, rendendo più nitidi i dettagli e facilitando l'estrazione delle features.
-    
-    \item \textbf{Rimozione dello sfondo}: per facilitare l'estrazione delle features, si è scelto di rimuovere lo sfondo dell'immagine, che potrebbe contenere rumore o dettagli non rilevanti. Questo passaggio è stato implementato tramite la funzione \texttt{soft\_threshold} (\cref{lst:pre_align_enhance}), che applica una sogliatura morbida all'immagine.
-\end{itemize}
-
-L'implementazione dell'algoritmo è riportata di seguito, mentre le implementazioni di \texttt{soft\_threshold} e \texttt{enhance\_contrast}  sono riportate nella \cref{subsec:preprocessing_impl}.
-
-\begin{lstlisting}[label={lst:pre_align_enhance}]
-    def pre_align_enhance(image, clip_limit = 0.8, tile_grid_size = (20,20), thr = 0.05):
-        # Convert image to grayscale
-        enhanced = image.copy()
-        if len(image.shape) == 3:
-            enhanced = cv2.cvtColor(enhanced, cv2.COLOR_RGB2GRAY)
-        # Enhance contrast using CLACHE
-        enhanced = enhance_contrast(enhanced, clip_limit, tile_grid_size)
-        # Remove background using a threshold
-        enhanced = soft_threshold(enhanced, thr)
-        return enhanced
-\end{lstlisting}
+I parametri \texttt{maxIters} e \texttt{confidence} nell'invocazione di \texttt{cv2.findHomography} permettono di regolare il numero massimo di iterazioni e la confidenza richiesta per il calcolo della trasformazione omografica. Questi parametri sono stati scelti in modo da ottenere un buon compromesso tra accuratezza e velocità di esecuzione.
 
 \subsection{Pre-processing} \label{subsec:preprocessing_impl}
+
+La fase di pre-processing è stata implementata nel file \texttt{enhancement.py}. Questa fase comprende operazioni volte a migliorare la qualità delle immagini calibrate e allineate, preparandole per il processo di stacking. Le operazioni implementate son:
+
+\begin{itemize}
+    \item \textbf{Ritaglio dell immagine} per centrare il soggetto ed eliminare bordi esterni indesiderati
+    \item \textbf{Riduzione del rumore (denoising)} tramite la rete neurale DnCNN;
+    \item \textbf{Miglioramento della nitidezza} attraverso l'uso di tecniche di Unsharp Mask personalizzate;
+    \item \textbf{Rimozione dello sfondo} tramite la sogliatura morbida;
+\end{itemize}
+
+Di seguito sono descritte le funzioni implementate per effettuare tali operazioni.
+
+\textbf{Riduzione del rumore e Unsharp Masking con DnCNN}
+
+Come descritto nel \cref{subsec:denoising} e nel \cref{subsec:unsharp_mask}, è stata implementata una versione personalizzata dell'Unsharp Masking che combina la riduzione del rumore tramite DnCNN e l'utilizzo di una maschera basata sul gradiente dell'immagine.
+
+Iniziamo col descrivere l'operazione di denoising con il modello preaddestrato. Per importarlo nel progetto è stato necessario scaricare il modello preaddestrato e salvarlo in un file \texttt{.pth}. Il modello è stato poi caricato utilizzando la libreria \texttt{torch} e la funzione \texttt{torch.load}. Il modello è stato quindi utilizzato per ridurre il rumore delle immagini, come mostrato nel seguente codice.
+
+\begin{lstlisting}[label={lst:dncnn}]
+    DNCNN_MODEL_PATH = './src/model.pth'
+    
+    class DnCNN(nn.Module):
+        def __init__(self,depth=17,n_channels=64,image_channels=1):
+            super().__init__()
+            self.dncnn = nn.Sequential(
+                nn.Conv2d(image_channels, n_channels, 3, padding=1), nn.ReLU(inplace=True),
+                *[layer_block(n_channels) for _ in range(depth-2)],
+                nn.Conv2d(n_channels, image_channels, 3, padding=1)
+            )
+            self._initialize_weights()
+    
+        def forward(self, x):
+            return x - self.dncnn(x)
+    
+        def _initialize_weights(self):
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    init.orthogonal_(m.weight)
+                    if m.bias is not None: init.constant_(m.bias, 0)
+                elif isinstance(m, nn.BatchNorm2d):
+                    init.constant_(m.weight, 1); init.constant_(m.bias, 0)
+    
+    def layer_block(n_channels):
+        return nn.Sequential(
+            nn.Conv2d(n_channels,n_channels,3,padding=1,bias=False),
+            nn.BatchNorm2d(n_channels, eps=1e-4, momentum=0.95),
+            nn.ReLU(inplace=True)
+        )
+    
+    def model_init(model_path=DNCNN_MODEL_PATH):
+        model = torch.load(model_path)
+        model.eval()
+        return model
+\end{lstlisting}
+    
+
+La classe \texttt{DnCNN} implementa una rete neurale convoluzionale profonda progettata specificamente per la riduzione del rumore nelle immagini. Questa rete, denominata \textbf{Denoising Convolutional Neural Network (DnCNN)}, è caratterizzata da una struttura composta da 17 strati convoluzionali, progettati per stimare e rimuovere il rumore presente nell'immagine di input, come visto nella \cref{subsec:denoising}. 
+
+La funzione \texttt{model\_init} si occupa di caricare il modello preaddestrato da un file \texttt{.pth} e restituirlo pronto per l'elaborazione.
+
+Per garantire la compatibilità con il modello DnCNN, le immagini devono essere trasformate in tensori e normalizzate. Dopo il denoising, è necessario riconvertire i tensori in immagini nel formato \texttt{np.float32}. Queste operazioni sono state incapsulate in due funzioni:
+
+\begin{enumerate}
+    \item \textbf{\texttt{prepare\_tensor\_for\_model}}: converte un'immagine nel formato tensoriale e la normalizza.
+
+    \item \textbf{\texttt{convert\_tensor\_to\_image}}: riconverte il tensore prodotto dal modello in un'immagine \texttt{np.float32} utilizzabile nei flussi di elaborazione successivi.
+\end{enumerate}
+
+L'implementazione di queste funzioni non è riportata per questioni di brevità.
+
+La funzione per effettuare il denoising, basata sull'\cref{alg:dncnn} è quindi la seguente:
+
+\begin{lstlisting}[label={lst:denoise}]
+    def perform_denoising(model, image):
+        shape = image.shape
+
+        if len(shape) < 3:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        channels = list(cv2.split(color.rgb2lab(image)))
+        
+        # convert image to tensor
+        l = prepare_tensor_for_model(channels[0], 100).to(device)
+        
+        if torch.cuda.is_available(): device = torch.device('cuda')
+        else: torch.device('cpu')
+        model = model.to(device).eval()
+        with torch.no_grad():
+            denoised_l = model(l).cpu()
+
+        # convert tensor to image
+        denoised_l = convert_tensor_to_image(denoised_l, 100)
+        channels[0] = denoised_l
+
+        # Merge the channels
+        denoised = cv2.merge(channels)
+        denoised = color.lab2rgb(denoised)
+
+        if len(shape) < 3:
+            denoised = cv2.cvtColor(denoised, cv2.COLOR_RGB2GRAY)
+
+        return denoised
+\end{lstlisting}
 
 \subsection{Stacking} \label{subsec:stacking_impl}
 
 \subsection{Post-processing} \label{subsec:postprocessing_impl}
+
+\begin{itemize}
+    \item \textbf{Miglioramento della nitidezza} utilizzando l'algoritmo Unsharp Mask tradizionale;
+    \item \textbf{Miglioramento del contrasto} applicando l'algoritmo CLAHE;
+    \item \textbf{Bilanciamento del colore} per correggere eventuali dominanti cromatiche;
+\end{itemize}
 
 \section{Sfide affrontate e soluzioni adottate} \label{sec:challenges}
 

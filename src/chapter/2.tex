@@ -377,6 +377,27 @@ A questo punto, vengono create delle maschere ($D_{\text{M}}$, $S_{\text{M}}$, r
 Per l'amplificazione dei dettagli ($D$), si calcola la differenza tra l'immagine originale e quella denoised, amplificandola con un fattore $\beta$ nelle zone con dettagli significativi.
 Infine, si combinano le immagini utilizzando le maschere, ottenendo un'immagine finale ($Out$) in cui i dettagli sono stati amplificati e il rumore ridotto.
 
+\subsection{Rimozione dello sfondo}
+
+Se il cielo negli scatti non è perfettamente uniforme, 
+potrebbero essere presenti gradienti di luminosità o rumore che influenzano negativamente il processo di stacking. Per ovviare a questo problema, è possibile rimuovere lo sfondo dalle immagini, enfatizzando i dettagli e riducendo l'effetto di gradienti di luminosità.
+
+Una tecnica molto semplice per rimuovere lo sfondo consiste nell'applicare una maschera all'immagine, mantenendo solo i pixel con intensità al di sotto di una soglia specificata. Questo metodo è efficace per rimuovere lo sfondo uniforme, ma potrebbe non funzionare correttamente se il cielo presenta gradienti di luminosità o rumore.
+
+Per superare queste limitazioni, è possibile applicare una trasformazione non lineare all'immagine, che enfatizza i dettagli e riduce il rumore. In questo progetto è stata utilizzata una trasformazione logistica, che comprime i valori dei pixel in un intervallo limitato, enfatizzando i dettagli e riducendo il rumore. L'algoritmo per la rimozione dello sfondo con trasformazione logistica è riportato nell'\cref{alg:remove_background}.
+
+\begin{algorithm}
+    \caption{\texttt{- Rimozione dello sfondo}:\\ Data un'immagine $I$, l'algoritmo restituisce l'immagine con lo sfondo rimosso $Out$.} \label{alg:remove_background}
+    \begin{algorithmic}[1]
+        \Function{remove\_background}{$I, \text{threshold}, \alpha$}
+            \State $mask \gets I < \text{threshold}$ \Comment{Maschera per lo sfondo}
+            \State $smooth\_image \gets I$
+            \State $smooth\_image[mask] \gets I[mask] \times (1 / (1 + \exp(-\alpha \times (I[mask] - \text{threshold}))))$
+            \State \textbf{return} $smooth\_image$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
 \section{Stacking delle immagini} \label{sec:stacking}
 
 Lo \textbf{stacking} è una tecnica fondamentale nell'astrofotografia che consiste nel combinare più immagini dello stesso soggetto per migliorare il rapporto segnale-rumore e rivelare dettagli altrimenti invisibili.
