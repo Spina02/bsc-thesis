@@ -1,18 +1,19 @@
 \chapter{Valutazione dei risultati e metriche di qualità} \label{chap:evaluation}
 
-In questo capitolo vengono presentate le metriche comunemente utilizzate in astrofotografia, e quelle utilizzate nell'ambito di questo progetto per valutare la qualità delle immagini ottenute attraverso il processo di elaborazione descritto nei capitoli precedenti.
+Questo capitolo presenta le metriche comunemente utilizzate in astrofotografia, nonché quelle impiegate in questo progetto per valutare la qualità delle immagini ottenute attraverso il processo di elaborazione descritto nei capitoli precedenti.
 
-La scelta delle metriche è fondamentale per avere un criterio oggettivo di valutazione e per confrontare i risultati ottenuti con diverse configurazioni di parametri. Verranno discusse sia metriche con riferimento, che richiedono un'immagine di riferimento ideale, sia metriche senza riferimento, che valutano la qualità dell'immagine in maniera autonoma.
+La selezione delle metriche è fondamentale per stabilire criteri oggettivi di valutazione e per confrontare i risultati ottenuti con diverse configurazioni di parametri. Verranno discusse sia metriche con riferimento, che richiedono un'immagine di riferimento ideale, sia metriche senza riferimento, che valutano autonomamente la qualità dell'immagine.
 
-A seguire verranno presentati i risultati ottenuti e verranno analizzati i miglioramenti introdotti dalle varie tecniche di elaborazione delle immagini.
+Successivamente, verranno presentati i risultati ottenuti e analizzati i miglioramenti introdotti dalle varie tecniche di elaborazione delle immagini.
+
 
 \section{Metriche di valutazione con riferimento} \label{sec:r_metrics}
 
-Le metriche con riferimento confrontano l'immagine elaborata con un'immagine ideale, fornendo una misura della similarità o della qualità relativa tra le due immagini. Nel contesto di questo progetto, l'utilizzo di metriche con riferimento ha presentato alcune sfide, principalmente a causa dell'assenza di un'immagine di riferimento adeguata, come discusso nella \cref{sec:challenges}.
+Le metriche con riferimento confrontano l'immagine elaborata con un'immagine ideale, fornendo una misura della similarità o della qualità relativa tra le due. Nel contesto di questo progetto, l'utilizzo di metriche con riferimento ha presentato alcune sfide, principalmente a causa dell'assenza di un'immagine di riferimento adeguata, come discusso nella \cref{sec:challenges}.
 
-\subsection{SSIM (Structural Similarity Index Measure)} \label{subsec:ssim}
+\subsection{SSIM} \label{subsec:ssim}
 
-\textbf{SSIM} è una metrica che misura la similarità strutturale tra due immagini. In astrofotografia, dopo aver applicato tecniche di denoising, la metrica SSIM viene utilizzata per valutare quanto efficacemente il rumore è stato ridotto mantenendo intatte le strutture originali dell'immagine, come stelle, galassie e nebulose. SSIM può essere utilizzata anche per perfezionare la tecnica dello stacking,aiutando a determinare quali combinazioni di immagini offrono la migliore preservazione delle strutture dettagliate rispetto alle immagini di riferimento. 
+\textbf{SSIM} (Structural Similarity Index Measure) è una metrica che misura la similarità strutturale tra due immagini. In astrofotografia, dopo aver applicato tecniche di denoising, la metrica SSIM viene utilizzata per valutare quanto efficacemente il rumore è stato ridotto mantenendo intatte le strutture originali dell'immagine, come stelle, galassie e nebulose. SSIM può essere impiegata anche per perfezionare la tecnica dello stacking, aiutando a determinare quali combinazioni di immagini offrono la migliore preservazione delle strutture dettagliate rispetto all'immagine di riferimento.
 
 La formula generale per il calcolo dell'SSIM tra due immagini $x$ e $y$ è:
 
@@ -22,33 +23,65 @@ $$
 
 dove $\mu_x$ e $\mu_y$ sono le medie delle immagini $x$ e $y$, $\sigma_x^2$ e $\sigma_y^2$ sono le varianze, $\sigma_{xy}$ è la covarianza tra $x$ e $y$ e, infine, $C_1$ e $C_2$ sono due costanti che stabilizzano la divisione in caso di valori molto bassi di $\mu_x^2 + \mu_y^2$ e $\sigma_x^2 + \sigma_y^2$. Il valore dell'SSIM è compreso tra $-1$ e $1$, dove $1$ indica una similarità perfetta tra le due immagini, e $-1$ indica una dissimilarità totale.
 
-SSIM tiene conto della percezione umana, valutando la luminanza, il contrasto e la struttura delle immagini. Tuttavia, è sensibile a piccoli spostamenti e rotazioni tra le immagini, e non è in grado di valutare la qualità di immagini con diverse dimensioni o scale.
+SSIM tiene conto della percezione umana, valutando la luminanza, il contrasto e la struttura delle immagini. Tuttavia, è sensibile a piccoli spostamenti e rotazioni tra le immagini e non è in grado di valutare la qualità di immagini con diverse dimensioni o scale.
 
 Nel progetto, a causa dell'assenza di un'immagine di riferimento adeguata (come discusso nella \cref{sec:challenges}), l'utilizzo dell'SSIM non è stato possibile.
 
-\subsection{SNR (Signal-to-Noise Ratio)} \label{subsec:snr}
+\subsection{SNR} \label{subsec:snr}
 
-Il \textbf{Rapporto Segnale-Rumore} (SNR) è una metrica fondamentale nell'ambito dell'astrofotografia, utilizzata per quantificare la qualità delle immagini astronomiche. Esso misura la relazione tra il segnale utile (le informazioni desiderate, come stelle, galassie o, in questo caso, la luna e i suoi dettagli) e il rumore di fondo presente nell'immagine. Un alto valore di SNR indica che il segnale è dominante rispetto al rumore, risultando in immagini più nitide e dettagliate.
+Il \textbf{Rapporto Segnale-Rumore} (SNR: Signal-to-Noise Ratio) è una metrica fondamentale nell'ambito dell'astrofotografia, utilizzata per quantificare la qualità delle immagini astronomiche. Esso misura la relazione tra il segnale utile (le informazioni desiderate, come stelle, galassie o, in questo caso, la Luna e i suoi dettagli) e il rumore di fondo presente nell'immagine. Un alto valore di SNR indica che il segnale è dominante rispetto al rumore, risultando in immagini più nitide e dettagliate.
 
 $$
 SNR = 10 \cdot \log_{10} \left( \frac {\text{Potenza del Segnale}} {\text{Potenza del Rumore}} \right) = 10 \cdot \log_{10} \left( \frac{\mu_s^2}{\mu_n^2} \right)
 $$
 
-dove $\mu_s$ è la media dell'immagine del segnale e $\sigma_n^2$ è la varianza del rumore.
+dove $\mu_s$ è la media del segnale e $\sigma_n^2$ è la varianza del rumore.
 
-L'SNR è una metrica semplice e intuitiva, ma non tiene conto delle caratteristiche percettive del sistema visivo umano. Inoltre, come SSIM, è sensibile a piccoli spostamenti e rotazioni tra le immagini, e non è in grado di valutare la qualità di immagini con diverse dimensioni o scale, richiedendo dunque un perfetto allineamento tra le immagini di riferimento e quelle elaborate.
+L'SNR è una metrica semplice e intuitiva, ma non tiene conto delle caratteristiche percettive del sistema visivo umano. Inoltre, come SSIM, è sensibile a piccoli spostamenti e rotazioni tra le immagini e non è in grado di valutare la qualità di immagini con diverse dimensioni o scale, richiedendo dunque un perfetto allineamento tra le immagini di riferimento e quelle elaborate.
 
-Algoritmi di denoising avanzati, inclusi quelli basati su reti neurali, vengono valutati utilizzando il SNR per garantire che il segnale sia preservato efficacemente mentre il rumore viene minimizzato. Tuttavia, anche l'SNR non è stato utilizzato in questo progetto a causa dell'assenza di un'immagine di riferimento adeguata.
+Algoritmi di denoising avanzati, inclusi quelli basati su reti neurali, vengono valutati utilizzando l'SNR per garantire che il segnale sia preservato efficacemente mentre il rumore viene minimizzato. Tuttavia, anche l'SNR non è stato utilizzato in questo progetto a causa dell'assenza di un'immagine di riferimento adeguata.
 
 \section{Metriche di valutazione senza riferimento} \label{sec:nr_metrics}
 
-\subsection{NIQE (Naturalness Image Quality Evaluator)} \label{subsec:niqe}
+La mancanza di un'immagine di riferimento ideale ha reso necessario l'utilizzo di metriche di valutazione senza riferimento per valutare la qualità delle immagini elaborate.
 
-\subsection{BRISQUE (Blind/Referenceless Image Spatial Quality Evaluator)} \label{subsec:brisque}
+Le metriche senza riferimento valutano la qualità dell'immagine in maniera autonoma, senza bisogno di confrontarla con un'immagine ideale,analizzando dunque l'immagine stessa per stimare la sua qualità basandosi su modelli statistici o percettivi.
 
-\subsection{LIQE (Language-Image Quality Evaluator)} \label{subsec:liqe}
+\subsection{NIQE} \label{subsec:niqe}
 
-\subsection{Motivazione della scelta di LIQE come metrica di riferimento} \label{subsec:why_liqe}
+\textbf{NIQE} (Naturalness Image Quality Evaluator) è una metrica di qualità delle immagini senza riferimento, sviluppata per valutare autonomamente la qualità delle immagini digitali, senza necessità di un'immagine di riferimento. NIQE è basata su un modello di percezione visiva umana, che valuta la qualità dell'immagine basandosi su caratteristiche statistiche e percettive, come la nitidezza, il contrasto, la luminosità e la presenza di artefatti \cite{niqe_paper}.
+
+NIQE calcola la distanza tra le statistiche dell'immagine e quelle di un campione di immagini di riferimento, fornendo un punteggio di qualità che indica quanto l'immagine si discosti dalla media delle immagini di riferimento.
+
+Nel progetto, NIQE è stata testata come possibile metrica di valutazione, ma ha mostrato limitazioni nel catturare miglioramenti specifici apportati dalle tecniche di elaborazione applicate alle immagini lunari. Ciò è probabilmente dovuto alla natura specifica delle immagini astronomiche, che possono differire significativamente dalle immagini di riferimento utilizzate per addestrare il modello.
+
+\subsection{BRISQUE} \label{subsec:brisque}
+
+\textbf{BRISQUE} (Blind Referenceless Image Spatial Quality Evaluator) è una metrica di qualità delle immagini senza riferimento, che utilizza caratteristiche statistiche naturali e un modello di regressione addestrato su un dataset di immagini distorte.
+
+BRISQUE è basata su un modello di percezione visiva umana, che valuta la qualità dell'immagine basandosi su caratteristiche statistiche e percettive, come la nitidezza, il contrasto, la luminosità e la presenza di artefatti \cite{brisque_paper}.
+
+Nel progetto, l'utilizzo di BRISQUE ha fornito risultati migliori rispetto a NIQE, ma ancora non pienamente soddisfacenti per valutare le immagini lunari elaborate.
+
+\subsection{LIQE} \label{subsec:liqe}
+
+\textbf{LIQE} (Learning-based Image Quality Evaluator) è una metrica di qualità delle immagini senza riferimento basata su apprendimento automatico, che utilizza tecniche di \textit{deep learning} per valutare la qualità delle immagini \cite{liqe_paper}. LIQE combina informazioni statistiche a livello globale e locale ed è in grado di catturare in maniera più efficace le distorsioni presenti nelle immagini.
+
+Il modello assegna un punteggio che va da 1 a 5, dove 1 indica una qualità molto bassa e 5 una qualità molto alta. Questa scala è adottata nell'implementazione della libreria \texttt{PyIQA} utilizzata nel progetto.
+
+Rispetto a NIQE e BRISQUE, LIQE è stato progettato per essere più robusto e generale e può essere utilizzato per valutare una vasta gamma di immagini. LIQE è stato addestrato su un dataset di immagini distorte e utilizza una rete neurale convoluzionale per valutare autonomamente la qualità delle immagini.
+
+\subsection{Considerazioni sulle metriche} \label{subsec:why_liqe}
+
+Nel progetto, sono state implementate e testate diverse metriche di valutazione senza riferimento, tra cui NIQE, BRISQUE e LIQE, utilizzando la libreria \texttt{PyIQA}, che fornisce implementazioni pronte all'uso di diverse metriche di qualità delle immagini.
+
+Dopo aver valutato i risultati ottenuti, è emerso che LIQE è la metrica più adatta per valutare la qualità delle immagini lunari elaborate.
+
+La scelta di LIQE come metrica principale per la valutazione dei risultati è stata motivata da diversi fattori. Innanzitutto, a causa dell'assenza di un'immagine di riferimento ideale, le metriche con riferimento non erano applicabili nel contesto del progetto. Tra le metriche senza riferimento, LIQE ha dimostrato di essere più sensibile ai miglioramenti apportati dalle tecniche di elaborazione implementate.
+
+Durante lo sviluppo, è emerso che metriche come NIQE e BRISQUE non sempre riflettevano accuratamente la percezione umana della qualità delle immagini. Ad esempio, in alcuni casi, un'immagine che visivamente appariva migliorata presentava un punteggio peggiore secondo queste metriche. LIQE, invece, ha mostrato una maggiore correlazione con la qualità percepita.
+
+È importante notare che LIQE non è specificamente progettato per valutare immagini astronomiche. Infatti, il modello importato da PyIQA, normalizzato tra 1 e 5, assegna valori che si aggirano intorno a 2, indicando una qualità molto bassa. Probabilmente ciò è dovuto al fatto che il modello è stato addestrato su un dataset di immagini a colori, mentre la Luna è pressocché monocromatica. Tuttavia, nonostante queste limitazioni, è stato notato che per miglioramenti visivi delle immagini corrispondevano incrementi nei punteggi LIQE.
 
 \section{Analisi e miglioramenti ottenuti} \label{sec:analysis}
 
