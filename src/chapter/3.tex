@@ -44,28 +44,28 @@ La pipeline di elaborazione completa è stata implementata nel file \texttt{proc
 
 \begin{lstlisting}
     def process_images(images=None, params={}):
-        det_str = params.get('det_str', 1.3)
-        gradient_threshold = params.get('gradient_threshold', 0.008)
-        dns_str = params.get('dns_str', 1.2)
-        stacking_alg = params.get('stacking_alg', 'weighted average')
-        average_alg = params.get('average_alg', 'sharpness')
-        unsharp_strength = params.get('unsharp_strength', 2.35)
-        tile_size = params.get('tile_size', (19, 19))
+        det_str    = params.get('det_str',    1.3)
+        grad_thr   = params.get('grad_thr',   0.008)
+        dns_str    = params.get('dns_str',    1.2)
+        stack_alg  = params.get('stack_alg',  'weighted_avg')
+        avg_alg    = params.get('avg_alg',    'sharpness')
+        ush_str    = params.get('ush_str',    2.35)
+        tile_size  = params.get('tile_size',  (19, 19))
         clip_limit = params.get('clip_limit', 0.8)
 
         # Calibration
         calibrated = calibrate_images(images)
 
-        # Alignment
+        # Alignment 
         aligned = align_images(images)
 
         # Pre-processing
         cropped = crop_to_center(aligned)
-        denoised = custom_unsharp_mask(aligned, det_str, gradient_thr, dns_str)
+        denoised = custom_unsharp_mask(aligned, det_str, grad_thr, dns_str)
         no_bg = [soft_threshold(img, 0.05, 50) for img in denoised]
 
         # Stacking
-        stacked = stack_images(no_bg, stacking_alg, average_alg)
+        stacked = stack_images(no_bg, stack_alg, average_alg)
 
         # Post-processing
         contrasted = enhance_contrast(stacked, clip_limit, tile_size)
@@ -447,7 +447,7 @@ Possiamo ora descrivere l'algoritmo di Unsharp Masking personalizzato, basato su
 
 La funzione \texttt{custom\_unsharp\_mask} prende in input una lista di immagini \texttt{images}, il modello DnCNN \texttt{model} e i parametri per controllare il processo: \texttt{det\_str} regola l'intensità dell'amplificazione dei dettagli, \texttt{thr} definisce la soglia per distinguere aree di dettaglio da aree uniformi, e \texttt{dns\_str} indica l'intensità del denoising sul risultato. 
 
-Per ciascuna immagine, viene applicato il denoising utilizzando il modello DnCNN, dopodiché viene calcolato il gradiente per identificare le aree contenenti dettagli significativi. Da questi dati viene creata una maschera che separa le zone ad alto dettaglio da quelle più uniformi. La fase finale combina l'immagine originale con quella denoised utilizzando le maschere create: nelle aree ad alto gradiente i dettagli vengono amplificati, mentre nelle zone uniformi viene privilegiato l'effetto del denoising.
+Per ciascuna immagine, viene applicato il denoising tramite il modello DnCNN, viene poi calcolato il gradiente, da cui si ricavano due maschere che separano zone ad alto dettaglio da quelle più uniformi. La fase finale combina l'immagine originale con quella denoised utilizzando le maschere create, amplificando i dettagli nelle aree ad alto gradiente e privilegiando l'effetto del denoising nelle altre.
 
 \subsection{Stacking} \label{subsec:stacking_impl}
 
@@ -639,17 +639,78 @@ Per assicurare che le operazioni di post-processing funzionino correttamente ind
 
 \section{Sfide affrontate e soluzioni adottate} \label{sec:challenges}
 
-\subsection{Ricerca dei parametri ottimali}
-
-Una delle maggiori sfide di questo progetto è stata la ricerca dei parametri ottimali per l'elaborazione delle immagini. Molti parametri, come la soglia per generare la maschera dal gradiente nella funzione \texttt{custom\_unsharp\_mask}, o  dipendono dalle immagini in input
+Durante la fase di progettazione e implementazione del progetto, sono state affrontate diverse sfide. Alcune di esse sono state risolte, mentre altre, a causa di limitazioni di tempo o risorse, rimangono aperte per futuri sviluppi.
 
 \subsection{Alto utilizzo di RAM}
 
-\subsection{No reference image}
+Un problema significativo riscontrato durante lo sviluppo è stato l'elevato utilizzo di memoria RAM da parte del programma. Tale problema è stato causato principalmente dall'uso di numerose immagini ad medio-alta risoluzione, che richiedono molta memoria per essere elaborate. La causa principale risiede nell'implementazione della funzione per la lettura e il caricamento delle immagini in memoria. Questo metodo prende in input il percorso della cartella contenente le foto e le apre tutte contemporaneamente (utilizzando metodi diversi in base al formato), inserendole in una lista.
+
+\begin{lstlisting}[label={lst:read_images}]
+    def read_image(file_path):
+        if file_path.lower().endswith(('.tiff', '.tif')):
+            return imageio.imread(file_path).astype(np.float32)
+        if file_path.lower().endswith(raw_formats):
+            with rawpy.imread(file_path) as raw:
+                # convert to rgb image using the camera white balance
+                return to_float32(raw.postprocess(use_camera_wb=True, no_auto_bright=True, output_bps=16))
+        else:
+            return to_float32(imageio.imread(file_path))
+
+    def read_images(folder_path, max_img=MAX_IMG):
+        img_paths = read_folder(folder_path, max_img)
+        @\color{red}\textit{\# $\ ------ \downarrow$ here is where the problem lies $\downarrow ------$}@
+        images = [read_image(path) for path in img_paths]
+\end{lstlisting}
+
+In questo modo, ogni immagine viene caricata in RAM in formato a 32 bit. Lavorando con insiemi di 20-30 di immagini l'uno (ad esempio nella fase di calibrazione sono stati utilizzati 30 bias frames e altrettanti dark frames, per un totale di circa 90 immagini caricate in memoria contemporaneamente) spesso il programma termina in modo anomalo a causa dell'uso eccessivo di memoria. Per ovviare a questo problema, è stata suddivisa la pipeline in stadi intermedi nei quali vengono salvati i risultati parziali in formato TIFF a 32 bit. In questo modo, è possibile riavviare l'esecuzione del programma senza dover ricalcolare tutti gli step precedenti al crash; tuttavia questa non rappresenta una soluzione ottimale.
+
+Una soluzione più adatta a questo problema è quella dell'uso di generatori per leggere le immagini. Ciò permette di caricare in memoria solo un'immagine alla volta, riducendo notevolmente l'uso di RAM. Una possibile implementazione è la seguente:
+
+\begin{lstlisting}[label={lst:image_generator}]
+    def read_images_generator(folder_path, max_imgs=None):
+        loaded = 0
+        for filename in sorted(os.listdir(folder_path)):
+            if max_imgs is not None and loaded >= max_imgs:
+                break
+            img_path = os.path.join(folder_path, filename)
+            if os.path.isfile(img_path):
+                if img_path.lower().endswith(('.tiff', '.tif')):
+                    yield imageio.imread(img_path).astype(np.float32)
+                if img_path.lower().endswith(raw_formats):
+                    with rawpy.imread(img_path) as raw:
+                        # convert to rgb image using the camera wb
+                        yield to_float32(raw.postprocess(use_camera_wb=True, no_auto_bright=True, output_bps=16))
+                else:
+                    yield to_float32(imageio.imread(img_path))
+                loaded += 1
+\end{lstlisting}
+
+Questo metodo è stato testato per generare le immagini di analisi e ha portato a un notevole risparmio di memoria. Si propone quindi come soluzione per futuri sviluppi.
+
+L'utilizzo intensivo di memoria ha spesso influenzato le scelte di progetto, portando a preferire soluzioni più efficienti dal punto di vista della memoria, anche a discapito della velocità di esecuzione. Un esempio si ha nella scelta dell'immagine di riferimento per l'allineamento; inizialmente si era pensato di selezionare tra le immagini acquisite quella con la migliore qualità, ma ciò avrebbe richiesto il caricamento in memoria di tutte le immagini per confrontarle, con un conseguente aumento dell'uso di RAM. Si è quindi preferito utilizzare la prima immagine come riferimento, anche se ciò potrebbe portare a risultati di allineamento meno precisi nel caso in cui la qualità dell'immagine di riferimento fosse inferiore rispetto alle altre.
+
+\subsection{Ricerca dei parametri ottimali}
+
+Una delle maggiori sfide di questo progetto è stata la ricerca dei parametri ottimali per l'elaborazione delle immagini. Molti parametri dipendono fortemente dalle immagini in ingresso, come la soglia \texttt{grad\_thr} per generare la maschera dal gradiente, o \texttt{dns\_str}, che regola l'intensità del denoising da applicare alla foto, entrambi nella funzione \texttt{custom\_unsharp\_mask}. È quindi necessario effettuare una ricerca avanzata dei parametri per rendere i risultati ottimali indipendentemente da fattori come la luminosità, il contrasto e la quantità di rumore, presenti nelle immagini di partenza. 
+
+Un'alternativa per ottenere risultati più precisi consiste nell'estrarre i valori di tali parametri direttamente dalle caratteristiche delle immagini di partenza. Ad esempio, il parametro \texttt{tile\_size} dipende principalmente dalle dimensioni dell'immagine, più che da caratteristiche della foto in sé; dopo diverse prove, è stato notato che si ottengono risultati migliori per valori che si aggirano attorno a 1/70 delle dimensioni dell'immagine dopo la fase di ritaglio.
+
+Un ulteriore problema riguarda la valutazione dei risultati nella ricerca dei parametri. Quando si ha a che fare anche solo con una decina di parametri da testare, provando tre valori per ciascuno di essi, si ottengono migliaia di foto in output, rendendo l'analisi visiva impossibile. Inoltre, spesso si osservano variazioni tra le immagini non sempre distinguibili ad occhio nudo. È quindi necessario stabilire una metrica di riferimento che rifletta il miglioramento visivo dell'immagine. Da ciò sorge un ulteriore problema: l'assenza di un'immagine di riferimento.
+
+\subsection{Assenza di immagine di riferimento}
+
+Come verrà illustrato nel \cref{chap:evaluation}, la metrica di valutazione maggiormente adottata nel contesto dell'astrofotografia è il rapporto segnale-rumore (SNR). Questa metrica, per essere calcolata, richiede la presenza di un'immagine di riferimento ideale a cui il programma deve tendere. Poiché le immagini sono state acquisite durante il progetto, non era disponibile un'immagine di riferimento ideale. È stato quindi tentato di utilizzare come riferimento un'immagine (scaricabile dai siti INAF o NASA) acquisita dal Lunar Reconnaissance Orbiter (LRO), un satellite in orbita intorno alla Luna. Questo satellite ha compiuto diversi scatti, da cui è stata elaborata l’immagine finale tramite la tecnica dello stitching. Tuttavia, ciò causa problemi di compatibilità con le immagini acquisite. Infatti, la foto di riferimento presenta, nelle aree periferiche della Luna, dettagli che non compaiono nelle immagini acquisite, rendendo impossibile l'allineamento. Sono state inoltre esplorate altre immagini di riferimento, ma quelle ad uso libero trovate su internet spesso non presentano una qualità superiore a quelle utilizzate nel progetto, rendendole quindi inadatte come riferimento “ideale”, oppure sono immagini delle cosiddette "mineral moon", risultanti dalla sovrapposizione di scatti ottenuti attraverso filtri di frequenza, con una colorazione artificiale che le rende non adatte al confronto.
+
+Una tecnica adottata comunemente per risolvere questo problema consiste nel prendere un'immagine di alta qualità e, da essa, generare diversi set di immagini con rumore aggiunto, in modo da simulare le condizioni reali. Questo metodo, chiamato \textit{data augmentation}, è stato adottato in diversi progetti di machine learning, e potrebbe essere una soluzione per questo progetto. Tuttavia, vista la mancanza di tempo e di risorse, non è stato possibile implementare questa soluzione, che si rimanda a sviluppi futuri.
+
+Viste le difficoltà affrontate, è stato deciso di utilizzare delle metriche di valutazione senza riferimento, le quali però, come vedremo nel dettaglio nel prossimo capitolo, non sempre sono in grado di percepire il miglioramento effettivo della foto.
 
 \subsection{Pochi dati per testing}
 
+Come già specificato nel capitolo introduttivo, gli scatti sono stati acquisiti tramite una fotocamera bridge Fujifilm Finepix S1, un dispositivo di media gamma, senza l'ausilio di strumentazione professionale come telescopi o montature robotizzate (descritte nella \cref{subsec:hardware}).
 
-\cleardoublepage
+Il problema principale è stato rappresentato dalle condizioni meteorologiche, che nei mesi precedenti la realizzazione del progetto sono state raramente favorevoli, permettendo di acquisire pochi scatti e, soprattutto, con poca variazione dell'illuminazione tra i vari set. Questa limitazione ha complicato la ricerca dei parametri, aumentando il rischio di overfitting sui dati disponibili per i test.
+
+Un altro problema riscontrato è la difficoltà nell'acquisizione dei bias frames. Questi infatti, come già specificato nella \cref{subsec:flat}, richiedono di catturare (nelle stesse condizioni di temperatura dei light frames) una fonte luminosa omogenea, il problema sorge quando si ha a che fare con una fonte non omogenea, come una lampada a incandescenza o a LED, che possono causare vignettatura o illuminazione non uniforme, che, invece di migliorare i risultati, li peggiorerebbero.
 
 \cleardoublepage
