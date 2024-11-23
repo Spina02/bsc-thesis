@@ -36,7 +36,48 @@ Il software è stato sviluppato in linguaggio Python, utilizzando principalmente
 
 Il modulo \texttt{utils.py} contiene alcune funzioni di ausiliarie (ad esempio, per creare cartelle di destinazione se non esistenti). All'interno di \texttt{image.py} sono presenti funzioni di utilità per la manipolazione delle immagini, come il caricamento, il salvataggio e la visualizzazione. Inoltre, nel file \texttt{metrics.py} sono presenti funzioni per il calcolo di metriche come il contrasto e la luminosità di un'immagine, e metriche di qualità come \texttt{BRISQUE}, \texttt{NIQE} e \texttt{LIQE}, affrontate più nel dettaglio nel \cref{chap:evaluation}
 
-Di seguito vengono descritte più nel dettaglio le implementazioni delle funzionalità principali del software.
+Nella prossima sezione verrà illustrata la pipeline completa di elaborazione delle immagini.
+
+\section{Pipeline di elaborazione} \label{sec:pipeline_impl}
+
+La pipeline di elaborazione completa è stata implementata nel file \texttt{process.py}. Questo file contiene la funzione \texttt{process\_images}, che esegue l'intera pipeline di elaborazione delle immagini, dalla calibrazione all'allineamento, dallo stacking al post-processing. La funzione prende in input una lista di immagini \texttt{images} e un dizionario di parametri \texttt{params} contenente i parametri di configurazione per la pipeline, e restituisce l'immagine finale elaborata.
+
+\begin{lstlisting}
+    def process_images(images=None, params={}):
+        det_str = params.get('det_str', 1.3)
+        gradient_threshold = params.get('gradient_threshold', 0.008)
+        dns_str = params.get('dns_str', 1.2)
+        stacking_alg = params.get('stacking_alg', 'weighted average')
+        average_alg = params.get('average_alg', 'sharpness')
+        unsharp_strength = params.get('unsharp_strength', 2.35)
+        tile_size = params.get('tile_size', (19, 19))
+        clip_limit = params.get('clip_limit', 0.8)
+
+        # Calibration
+        calibrated = calibrate_images(images)
+
+        # Alignment
+        aligned = align_images(images)
+
+        # Pre-processing
+        cropped = crop_to_center(aligned)
+        denoised = custom_unsharp_mask(aligned, det_str, gradient_thr, dns_str)
+        no_bg = [soft_threshold(img, 0.05, 50) for img in denoised]
+
+        # Stacking
+        stacked = stack_images(no_bg, stacking_alg, average_alg)
+
+        # Post-processing
+        contrasted = enhance_contrast(stacked, clip_limit, tile_size)
+        unsharped = unsharp_mask(contrasted, unsharp_strength)
+        final_image = shades_of_gray(unsharped)
+        
+        return final_image
+\end{lstlisting}
+
+I parametri di default sono stati ottenuti eseguendo una grid search (implementata in \texttt{grid\_search.py}) su un paio di set di immagini di test, al fine di trovare i valori ottimali che massimizzano la qualità dell'output finale secondo le metriche implementate in \texttt{metrics.py}. Tale ricerca ha permesso di identificare una configurazione bilanciata di parametri che garantisce risultati accettabili sui diversi set.
+
+Nelle sezioni seguenti verranno illustrate in dettaglio le implementazioni delle singole funzionalità della pipeline, esaminando le scelte progettuali e gli algoritmi utilizzati per ciascun modulo.
 
 \subsection{Calibrazione} \label{subsec:calibration_impl}
 
@@ -191,8 +232,10 @@ L'implementazione di \texttt{align\_image} è riportata qui sotto:
         # Find keypoints and descriptors for the image
         kp, des = detector.detectAndCompute(aligned_image, None)
 
-        # Match the descriptors and filter the matches
+        # Match the descriptors
         matches = matcher.knnMatch(ref_des, des, k=2)
+        
+        # Apply the ratio test
         matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
         
         # Compute the homography
@@ -210,20 +253,64 @@ I parametri \texttt{maxIters} e \texttt{confidence} nell'invocazione di \texttt{
 
 \subsection{Pre-processing} \label{subsec:preprocessing_impl}
 
-La fase di pre-processing è stata implementata nel file \texttt{enhancement.py}. Questa fase comprende operazioni volte a migliorare la qualità delle immagini calibrate e allineate, preparandole per il processo di stacking. Le operazioni implementate son:
+La fase di pre-processing affrontata nella \cref{sec:preprocessing} è stata implementata nel file \texttt{enhancement.py}. Questa fase comprende operazioni volte a migliorare la qualità delle immagini calibrate e allineate, preparandole per il processo di stacking. Le operazioni implementate vengono eseguite a cascata e sono:
 
 \begin{itemize}
     \item \textbf{Ritaglio dell immagine} per centrare il soggetto ed eliminare bordi esterni indesiderati
-    \item \textbf{Riduzione del rumore (denoising)} tramite la rete neurale DnCNN;
-    \item \textbf{Miglioramento della nitidezza} attraverso l'uso di tecniche di Unsharp Mask personalizzate;
+    \item \textbf{Miglioramento della nitidezza} attraverso l'uso di tecniche di Unsharp Mask personalizzate e DnCNN;
     \item \textbf{Rimozione dello sfondo} tramite la sogliatura morbida;
 \end{itemize}
 
 Di seguito sono descritte le funzioni implementate per effettuare tali operazioni.
 
+\textbf{Ritaglio dell'immagine}
+
+Il ritaglio dell'immagine, basato sull'\cref{alg:crop}, è stato implementato nella funzione \texttt{crop\_to\_center}. Questa funzione prende in input una lista di immagini allineate \texttt{images} e un margine \texttt{margin} (di default 10 pixel) e restituisce una lista di immagini ritagliate in modo che il soggetto sia centrato e i bordi esterni siano eliminati.
+
+\begin{lstlisting}[label={lst:crop}]
+    def crop_to_center(images, margin=10):
+    cropped_images = []
+
+    # Process the first image to get the cropping parameters
+    ref = images[0]
+    gray = ref
+    if len(ref.shape) == 3:
+        gray = cv2.cvtColor(gray, cv2.COLOR_RGB2GRAY)
+
+    # Binary thresholding
+    _, thresh = cv2.threshold(gray, 0.1, 1.0, cv2.THRESH_BINARY)
+
+    # Find contours
+    contours, _ = cv2.findContours(to_8bit(thresh), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contour = max(contours, key=cv2.contourArea)
+
+    # Get the bounding rectangle of the selected contour
+    x, y, w, h = cv2.boundingRect(contour)
+    center_x, center_y = x + w//2, y + h//2 # Calculate the center
+    size = max(w, h) + 2 * margin               # Determine the size
+
+    # Calculate the top-left corner of the square
+    start_x = max(center_x - size//2, 0)
+    start_y = max(center_y - size//2, 0)
+
+    # Ensure the square fits within the image boundaries
+    end_x = min(start_x + size, ref.shape[1])
+    end_y = min(start_y + size, ref.shape[0])
+
+    # Crop all images using the same parameters
+    for image in images:
+        cropped_image = image[start_y:end_y, start_x:end_x]
+        cropped_image = np.clip(cropped_image, 0, 1)
+        cropped_images.append(cropped_image)
+
+    return cropped_images
+\end{lstlisting}
+
+Da notare che la funzione \texttt{crop\_to\_center} ritaglia tutte le immagini della lista \texttt{images} utilizzando i parametri di ritaglio calcolati sull'immagine di riferimento. Questo approccio richiede che il soggetto sia centrato in tutte le immagini, altrimenti potrebbero verificarsi problemi di allineamento durante il processo di stacking.
+
 \textbf{Riduzione del rumore e Unsharp Masking con DnCNN}
 
-Come descritto nel \cref{subsec:denoising} e nel \cref{subsec:unsharp_mask}, è stata implementata una versione personalizzata dell'Unsharp Masking che combina la riduzione del rumore tramite DnCNN e l'utilizzo di una maschera basata sul gradiente dell'immagine.
+Come descritto nelle sezioni \ref{subsec:denoising} e \ref{subsec:unsharp_mask}, è stata implementata una versione personalizzata dell'Unsharp Masking che combina la riduzione del rumore tramite DnCNN e l'utilizzo di una maschera basata sul gradiente dell'immagine.
 
 Iniziamo col descrivere l'operazione di denoising con il modello preaddestrato. Per importarlo nel progetto è stato necessario scaricare il modello preaddestrato e salvarlo in un file \texttt{.pth}. Il modello è stato poi caricato utilizzando la libreria \texttt{torch} e la funzione \texttt{torch.load}. Il modello è stato quindi utilizzato per ridurre il rumore delle immagini, come mostrato nel seguente codice.
 
@@ -263,7 +350,6 @@ Iniziamo col descrivere l'operazione di denoising con il modello preaddestrato. 
         model.eval()
         return model
 \end{lstlisting}
-    
 
 La classe \texttt{DnCNN} implementa una rete neurale convoluzionale profonda progettata specificamente per la riduzione del rumore nelle immagini. Questa rete, denominata \textbf{Denoising Convolutional Neural Network (DnCNN)}, è caratterizzata da una struttura composta da 17 strati convoluzionali, progettati per stimare e rimuovere il rumore presente nell'immagine di input, come visto nella \cref{subsec:denoising}. 
 
@@ -312,24 +398,258 @@ La funzione per effettuare il denoising, basata sull'\cref{alg:dncnn} è quindi 
         return denoised
 \end{lstlisting}
 
+Come è possibile notare, il denoising viene eseguito solo sul canale L dell'immagine, in quanto è il canale che contiene la maggior parte delle informazioni di luminosità. Dopodiché l'immagine viene riconvertita in RGB e, se necessario, in scala di grigi.
+
+Possiamo ora descrivere l'algoritmo di Unsharp Masking personalizzato, basato sull'\cref{alg:custom_unsharp}, che è stato implementato nella funzione \texttt{custom\_unsharp\_mask}. Questa implementazione combina il denoising tramite DnCNN con una maschera basata sul gradiente dell'immagine per preservare i dettagli importanti.
+
+\begin{lstlisting}[label={lst:unsharp_mask}]
+    def custom_unsharp_mask(images, model, det_str=1.3, thr=0.09, dns_str=1.2):
+        sharpened_images = []
+
+        for idx, image in enumerate(images):
+            # Apply denoising with DnCNN
+            denoised = denoise(image, model)
+            
+            # Blend original and denoised image
+            denoised = denoised * dns_str + image * (1 - dns_str)
+
+            # Convert to grayscale for gradient calculation if needed
+            gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
+            
+            # Calculate image gradient magnitude
+            grad_mag = np.sqrt(np.gradient(gray)**2, axis=0)
+
+            # Create denoise mask: 1 where gradient is low
+            mask = np.where(grad_mag < thr, 1, 0).astype(np.float32)
+            # Smooth mask edges
+            mask = cv2.GaussianBlur(mask, (3,3), 0.5)
+
+            # Expand mask to 3 channels for RGB images
+            if image.ndim == 3:
+                mask = np.repeat(mask[:, :, np.newaxis], 3, axis=2)
+
+            # Create detail mask (inverse of denoise mask)
+            det_mask = 1 - mask
+
+            # Combine denoised and original image using masks
+            final_image = (denoised * mask) + (image * det_mask)
+
+            # Amplify details in high gradient areas
+            amplified_details = (image - denoised)@$\,$@*@$\,$@det_str@$\,$@*@$\,$@det_mask
+            sharpened_image = final_image + amplified_details
+
+            # Ensure valid pixel range
+            sharpened_image = np.clip(sharpened_image, 0, 1)
+            sharpened_images.append(sharpened_image)
+
+        return sharpened_images
+\end{lstlisting}
+
+La funzione \texttt{custom\_unsharp\_mask} prende in input una lista di immagini \texttt{images}, il modello DnCNN \texttt{model} e i parametri per controllare il processo: \texttt{det\_str} regola l'intensità dell'amplificazione dei dettagli, \texttt{thr} definisce la soglia per distinguere aree di dettaglio da aree uniformi, e \texttt{dns\_str} indica l'intensità del denoising sul risultato. 
+
+Per ciascuna immagine, viene applicato il denoising utilizzando il modello DnCNN, dopodiché viene calcolato il gradiente per identificare le aree contenenti dettagli significativi. Da questi dati viene creata una maschera che separa le zone ad alto dettaglio da quelle più uniformi. La fase finale combina l'immagine originale con quella denoised utilizzando le maschere create: nelle aree ad alto gradiente i dettagli vengono amplificati, mentre nelle zone uniformi viene privilegiato l'effetto del denoising.
+
 \subsection{Stacking} \label{subsec:stacking_impl}
+
+La fase di stacking delle immagini è stata implementata nel file \texttt{stacking.py}. Come descritto nel \cref{sec:stacking}, lo stacking è una tecnica fondamentale in astrofotografia per migliorare il rapporto segnale-rumore combinando più immagini dello stesso soggetto. Nel progetto sono stati implementati tre dei metodi di stacking più comuni:
+
+\begin{itemize}
+    \item \textbf{Media Pesata (Weighted Mean)}: calcola la media pesata delle immagini, assegnando pesi basati su una metrica di qualità, come la nitidezza.
+    \item \textbf{Mediana (Median Stacking)}: calcola il valore mediano pixel per pixel delle immagini.
+    \item \textbf{Sigma Clipping}: calcola la media pixel per pixel escludendo i pixel che deviano oltre una certa soglia dalla media.
+\end{itemize}
+
+Il metodo che ha prodotto i risultati migliori è la media pesata, dove i pesi sono determinati in base alla qualità di ciascuna immagine. L'algoritmo è stato implementato nella funzione \texttt{weighted\_average\_stack}.
+
+\begin{lstlisting}[label={lst:weighted_average_stack}]
+    def weighted_average_stack(images, method='sharpness'):
+        # Calculate the weights for each image
+        weights = calculate_weights(images, method)
+        # Zero out the lowest 10% of the weights
+        weights[np.argsort(weights)[:len(weights)//10]] = 0
+        weights = weights / np.sum(weights)
+
+        n_ch = 1 if len(images[0].shape) == 2 else images[0].shape[2]
+        stacked_channels = []
+        for i in range(n_ch):
+            # Extract the i-th channel from each image
+            channel_stack = np.array([cv2.split(img)[i] for img in images])
+
+            # Calculate the weighted sum of the channels
+            stacked_channel = np.zeros_like(channel_stack[0], dtype=np.float64)
+            for channel, weight in zip(channel_stack, weights):
+                # Weighted sum
+                stacked_channel += channel * weight
+
+            stacked_channels.append(stacked_channel)
+
+        # Combine the channels into a single image
+        stacked_image = cv2.merge(stacked_channels)
+        return stacked_image.astype(np.float32)
+\end{lstlisting}
+
+La funzione \texttt{weighted\_average\_stack} calcola i pesi per ciascuna immagine in base alla metrica specificata (chiamando la funzione \texttt{calculate\_weights}), normalizza i pesi e calcola la media pesata dei pixel per ciascun canale. Infine, combina i canali in un'unica immagine.
+
+La metrica che ha portato a risultati migliori è stata la nitidezza, ma è possibile utilizzare anche altre metriche.
+
+La funzione \texttt{calculate\_weights} per calcolare i pesi è riportata di seguito:
+
+\begin{lstlisting}[label={lst:calculate_weights}]
+    def calculate_weights(images, method='sharpness'):
+        if method == 'contrast':
+            weights = [calculate_contrast(img) for img in images]
+        elif method == 'sharpness':
+            weights = [calculate_sharpness(img) for img in images]
+        elif method == 'brisque':
+            weights = [1 - normalize(calculate_metric(img, 'brisque_matlab'), 0, 100) for img in images]
+        elif method == 'liqe':
+            weights = [calculate_metric(img, 'liqe') for img in images]
+        else:
+            raise ValueError("Unknown method: {}".format(method))
+        return weights 
+\end{lstlisting}
+
+Le metriche disponibili includono la nitidezza \texttt{sharpness}, il contrasto \texttt{contrast}, e le metriche \texttt{BRISQUE} e \texttt{LIQE} di PyIqa. Tutte queste metriche vengono calcolate utilizzando le funzioni definite nel file \texttt{metrics.py}, non riportate per brevità.
+
+Il metodo \texttt{median\_stack} implementa lo stacking per mediana, calcolando il valore mediano pixel per pixel delle immagini. Questo metodo è utile per ridurre l'effetto di outlier e rumore impulsivo.
+
+\begin{lstlisting}[label={lst:median_stack}]
+    def median_stack(images):
+        n_ch = 1 if len(images[0].shape) == 2 else images[0].shape[2]
+        stacked_channels = [np.median([cv2.split(img)[i] for img in images], axis=0) for i in range(n_ch)]
+        stacked_image = cv2.merge(stacked_channels)
+        return stacked_image.astype(np.float32)
+\end{lstlisting}
+
+Il metodo \texttt{sigma\_clipping} implementa lo stacking utilizzando il sigma clipping, che esclude i pixel che deviano oltre una certa soglia (espressa in termini di deviazione standard) dalla media.
+
+\begin{lstlisting}[label={lst:sigma_clipping}]
+    def sigma_clipping(images, sigma=3):
+        n_ch = 1 if len(images[0].shape) == 2 else images[0].shape[2]
+        stacked_channels = []
+        for i in range(n_ch):
+            channel_stack = np.array([cv2.split(img)[i] for img in images])
+            mean = np.mean(channel_stack, axis=0)
+            std = np.std(channel_stack, axis=0)
+            # Mask for values within @\color{green!40!black} \texttt{sigma $\times$ std}@ from the mean
+            mask = np.abs(channel_stack - mean) < sigma * std
+            # Clip the values outside the mask to the mean
+            clipped = np.where(mask, channel_stack, mean)
+            # Calculate the mean of the clipped values
+            stacked_channel = np.mean(clipped, axis=0)
+            stacked_channels.append(stacked_channel)
+        stacked_image = cv2.merge(stacked_channels)
+        return stacked_image.astype(np.float32)
+\end{lstlisting}
+
+Questo metodo è efficace nel ridurre l'impatto di valori anomali e artefatti.
 
 \subsection{Post-processing} \label{subsec:postprocessing_impl}
 
+La fase di post-processing è stata implementata nel file \texttt{enhancement.py} e comprende diverse operazioni finalizzate a migliorare ulteriormente la qualità dell'immagine dopo lo stacking. Le principali operazioni eseguite sono:
+
 \begin{itemize}
-    \item \textbf{Miglioramento della nitidezza} utilizzando l'algoritmo Unsharp Mask tradizionale;
-    \item \textbf{Miglioramento del contrasto} applicando l'algoritmo CLAHE;
-    \item \textbf{Bilanciamento del colore} per correggere eventuali dominanti cromatiche;
+    \item \textbf{Miglioramento della nitidezza} utilizzando l'algoritmo tradizionale di Unsharp Mask.
+    \item \textbf{Miglioramento del contrasto} applicando l'algoritmo CLAHE (Contrast Limited Adaptive Histogram Equalization).
+    \item \textbf{Bilanciamento del colore} per correggere eventuali dominanti cromatiche presenti nell'immagine finale.
 \end{itemize}
+
+Di seguito sono descritte le implementazioni di queste operazioni.
+
+\textbf{Miglioramento della nitidezza con Unsharp Mask}
+
+Dopo lo stacking, può essere utile aumentare ulteriormente la nitidezza dell'immagine per enfatizzare i dettagli superficiali della Luna. L'algoritmo di Unsharp Mask tradizionale è stato utilizzato per questo scopo, implementato nella funzione \texttt{unsharp\_mask}.
+
+\begin{lstlisting}[label={lst:unsharp_mask}]
+    def unsharp_mask(image, strength):
+        # Apply a Gaussian filter to blur the image
+        blurred_image = cv2.GaussianBlur(image, (3, 3), 0.5)
+
+        # Combine the blurred image with the original image
+        sharpened_image = cv2.addWeighted(image, 1 + strength, blurred_image, -strength, 0)
+
+        # Clip the values to the valid range
+        sharpened_image = np.clip(sharpened_image, 0, 1)
+
+        return sharpened_image
+\end{lstlisting}
+
+In questa funzione, viene applicato un filtro Gaussiano per ottenere una versione sfocata dell'immagine. La differenza tra l'immagine originale e quella sfocata viene poi amplificata di un fattore \texttt{strength} e sommata all'originale. Questo approccio, descritto in dettaglio nella \cref{subsec:unsharp_mask}, incrementa efficacemente la nitidezza dell'immagine preservando al contempo la naturalezza dei dettagli e minimizzando l'introduzione di artefatti.
+
+Il parametro \texttt{strength} consente un controllo preciso sull'intensità dell'effetto di sharpening. Attraverso test empirici condotti nell'ambito di questo progetto, è stato determinato che valori intorno a 2.35 forniscono il miglior compromesso tra miglioramento della nitidezza e preservazione della qualità dell'immagine.
+
+\textbf{Miglioramento del contrasto con CLAHE}
+
+Per migliorare il contrasto locale e rendere più visibili le variazioni tonali nell'immagine, è stato utilizzato l'algoritmo CLAHE (Contrast Limited Adaptive Histogram Equalization), descritto nell'\cref{alg:clache}.
+
+L'implementazione è stata realizzata nella funzione \texttt{enhance\_contrast}.
+
+\begin{lstlisting}[label={lst:clache}]
+    def enhance_contrast(image, clip_limit = 0.07, tile_size = (20, 20)):
+        if len(image.shape) < 3: image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+
+        # Convert the image to LAB color space
+        lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+        l_channel = lab[:, :, 0]
+
+        # Apply CLAHE to the L channel
+        clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_size)
+        l_channel_equalized = clahe.apply(l_channel)
+
+        # Update the L channel
+        lab[:, :, 0] = l_channel_equalized
+
+        # Convert the image back to RGB color space
+        enhanced_image = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+
+        return enhanced_image
+\end{lstlisting}
+
+L'algoritmo migliora il contrasto locale dell'immagine, rendendo più evidenti i dettagli nelle aree scure o chiare. I parametri \texttt{clip\_limit} e \texttt{tile\_grid\_size} permettono di regolare il livello di contrasto e la dimensione dei blocchi utilizzati per il calcolo dell'istogramma. I valori di default sono stati scelti in modo da ottenere risultati ottimali.
+
+\textbf{Bilanciamento del colore}
+
+Per correggere eventuali dominanti cromatiche e bilanciare i colori dell'immagine finale, è stato applicato nuovamente l'algoritmo \texttt{Shades of Gray}, già descritto nella \cref{subsec:color_balance}. L'implementazione è la seguente:
+
+\begin{lstlisting}[label={lst:color_balance}]
+    def shades_of_gray(image, power=6):
+        # Calculate norm values for each channel using Minkowski norm
+        norm_values = np.power(np.mean(np.power(image, power), axis=(0, 1)), 1 / power)
+        
+        # Calculate the mean of the norm values
+        mean_norm = np.mean(norm_values)
+        
+        # Calculate scaling factors to balance the color channels
+        scale_factors = mean_norm / norm_values
+        
+        # Apply the scaling factors to balance the image
+        balanced_image = image * scale_factors
+        
+        # Clip values to valid range [0,1]
+        balanced_image = np.clip(balanced_image, 0, 1)
+
+        return balanced_image 
+\end{lstlisting}
+
+Questa funzione normalizza i canali di colore dell'immagine, correggendo le deviazioni cromatiche e garantendo una resa cromatica più naturale.
+
+Le operazioni di post-processing vengono eseguite in sequenza per ottenere un'immagine finale ottimizzata. Dopo lo stacking, l'immagine passa attraverso l'Unsharp Mask per migliorare la nitidezza, CLAHE per aumentare il contrasto e infine Shades of Gray per bilanciare i colori. Questa sequenza garantisce che i dettagli siano ben definiti, il contrasto elevato e i colori equilibrati, migliorando significativamente la qualità visiva dell'immagine finale.
+
+Per assicurare che le operazioni di post-processing funzionino correttamente indipendentemente dalle condizioni iniziali dell'immagine, è stata implementata una gestione delle immagini in scala di grigi e a colori. Ad esempio, se l'immagine è in scala di grigi, viene convertita temporaneamente in formato RGB prima di applicare CLAHE, per evitare errori di dimensionamento dei canali.
 
 \section{Sfide affrontate e soluzioni adottate} \label{sec:challenges}
 
-- Alto utilizzo di RAM 
+\subsection{Ricerca dei parametri ottimali}
 
-- No reference image
+Una delle maggiori sfide di questo progetto è stata la ricerca dei parametri ottimali per l'elaborazione delle immagini. Molti parametri, come la soglia per generare la maschera dal gradiente nella funzione \texttt{custom\_unsharp\_mask}, o  dipendono dalle immagini in input
 
-- Sfondo non completamente nero 
+\subsection{Alto utilizzo di RAM}
+
+\subsection{No reference image}
+
+\subsection{Pochi dati per testing}
 
 
+\cleardoublepage
 
 \cleardoublepage

@@ -247,6 +247,43 @@ L'algoritmo completo per l'allineamento delle immagini, che combina le fasi di e
 
 Il pre-processing delle immagini è quella fase di elaborazione dei singoli scatti (ormai calibrati e allineati), necessaria per migliorare la qualità delle immagini e prepararle per il processo di stacking. Questa fase comprende principalmente il denoising, l'incremento della nitidezza e del contrasto, e l'applicazione di filtri per ridurre l'effetto di \textit{banding} e di \textit{moiré}.
 
+\subsection{Ritaglio delle immagini} \label{subsec:crop}
+
+Nel processo di pre-processing, dopo l'allineamento delle immagini, è utile ritagliare le immagini per focalizzarsi sulla Luna, riducendo la dimensione complessiva dell'immagine. Questo passaggio ha un duplice vantaggio: riduce notevolmente il carico computazionale delle operazioni successive e migliora l'aspetto estetico del risultato finale eliminando porzioni inutili di cielo.
+
+Il processo di ritaglio automatico si basa sull'identificazione del soggetto principale (la Luna) attraverso una sogliatura binaria, seguita dal calcolo di un'area di ritaglio quadrata centrata sul soggetto. L'algoritmo è illustrato in dettaglio nell'\cref{alg:crop}.
+
+\begin{algorithm}[H]
+    \caption{\texttt{- Ritaglio automatico delle immagini}:\\ Dato un insieme di immagini allineate $I$ e un margine $m$, l'algoritmo restituisce l'insieme di immagini ritagliate $Out$.} \label{alg:crop}
+    \begin{algorithmic}[1]
+        \Function{crop\_to\_center}{$I, m$}
+            \State $F \gets I[0]$ \Comment{Prima immagine come riferimento}
+            \State $G \gets$ Converti $F$ in scala di grigi
+            \State $T \gets$ Applica soglia binaria a $G$ \Comment{Separa il soggetto dallo sfondo}
+            \State $C \gets$ Trova i contorni in $T$
+            \State $B \gets$ Calcola il rettangolo delimitatore del contorno più grande
+            \State $x_c, y_c \gets$ Calcola il centro di $B$
+            \State $s \gets \max(\text{larghezza}(B), \text{altezza}(B)) + 2m$ \Comment{Dimensione lato}
+            \State $x_1 \gets \max\left(x_c - \dfrac{s}{2}, 0\right)$ \Comment{Assicura che sia entro i limiti}
+            \State $y_1 \gets \max\left(y_c - \dfrac{s}{2}, 0\right)$
+            \State $x_2 \gets \min\left(x_1 + s, \text{larghezza}(F)\right)$
+            \State $y_2 \gets \min\left(y_1 + s, \text{altezza}(F)\right)$
+            \State $Out \gets []$
+            \For{ogni immagine $i$ in $I$}
+                \State $c \gets i[y_1:y_2, x_1:x_2]$ \Comment{Ritaglia l'immagine}
+                \State Aggiungi $c$ a $Out$
+            \EndFor
+            \State \textbf{return} $Out$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+È importante notare che, dopo aver calcolato le coordinate di ritaglio $(x_1, y_1)$ e $(x_2, y_2)$, si effettuano controlli per assicurarsi che queste rientrino nei limiti dell'immagine originale, evitando così errori dovuti a coordinate fuori dai bordi.
+
+Per ritagliare un insieme di immagini, si applica la funzione \texttt{crop\_to\_center} con un margine $m$ appropriato. In questo progetto, si è utilizzato un margine compreso tra 10 e 25 pixel, che rappresenta un buon compromesso tra l'inclusione di dettagli periferici e la riduzione di porzioni inutili dell'immagine.
+
+Questa funzione richiede che le immagini siano allineate, poiché le informazioni sul ritaglio vengono calcolate sulla prima immagine, che funge da riferimento, e le altre immagini vengono ritagliate utilizzando le stesse coordinate. Questo assicura che il soggetto principale sia centrato in tutte le immagini ritagliate, facilitando le operazioni successive come lo stacking.
+
 \subsection{Denoising tramite reti neurali: DnCnn} \label{subsec:denoising}
 
 La riduzione del \hyperref[sec:noise]{rumore} (\textit{denoising}) è un passaggio fondamentale per migliorare la qualità delle immagini, specialmente quando si lavora con scatti acquisiti in condizioni non ideali. Nelle immagini lunari, il rumore può nascondere dettagli importanti e compromettere l'efficacia delle tecniche successive, come lo \textit{stacking}.
@@ -285,7 +322,7 @@ Tecniche tradizionali di denoising prevedono l'utilizzo di filtri lineari e non,
     
 \end{itemize}
 
-Questi filtri possono ridurre il rumore ma tendono a sfocare l'immagine e a ridurre la nitidezza dei dettagli. Inoltre, potrebbero non essere efficaci contro tutti i tipi di rumore presenti nelle immagini lunari. Per superare questo problema, negli ultimi anni sono state sviluppate tecniche di denoising basate su reti neurali, che sfruttano la capacità delle reti di apprendere modelli complessi e non lineari direttamente dai dati.
+Questi filtri riducono il rumore, ma tendono a sfocare l'immagine e a ridurre la nitidezza dei dettagli. Per superare questo problema, negli ultimi anni sono state sviluppate tecniche di denoising basate su reti neurali, che sfruttano la capacità delle reti di apprendere modelli complessi e non lineari direttamente dai dati.
 
 In questo progetto è stato utilizzato \textbf{DnCNN} (Denoising Convolutional Neural Network), una rete neurale profonda progettata specificamente per il denoising di immagini. DnCNN è composto da 17 strati convoluzionali, seguiti da funzioni di attivazione ReLU e da un layer di regressione:
 
@@ -354,8 +391,8 @@ L'applicazione di DnCNN alle immaginni lunari ha portato a risultati a prima vis
             \State $I_{\text{D}} \gets$ \Call{denoise\_image}{$I$} \Comment{Riduzione del rumore con l'\cref{alg:dncnn}}
             \State $I_{\text{D}} \gets (I_{\text{D}} \times \alpha) + I \times (1-\alpha)$ \Comment{Attenuazione del denoising}
             \State $G \gets$ Gradient($I$) \Comment{Calcolo del gradiente}
-            \State $D_{\text{M}} \gets Get\_Mask(G, thr)$ \Comment{Maschera di denoising}
-            \State $D_{\text{M}} \gets Gaussian\_Blur(D_{\text{M}})$ \Comment{Sfoca leggermente la maschera}
+            \State $D_{\text{M}} \gets$ Get\_Mask$(G, thr)$ \Comment{Maschera di denoising}
+            \State $D_{\text{M}} \gets$ Gaussian\_Blur$(D_{\text{M}})$ \Comment{Sfoca leggermente la maschera}
             \State $S_{\text{M}} \gets 1-D_{\text{M}}$ \Comment{Maschera di sharpening}
             \State $D \gets (I - I_{\text{D}}) \times \beta$ \Comment{Estrazione dei dettagli}
             \State $Out \gets (I_{\text{D}} \times D_{\text{M}}) + (I + D)\times S_{\text{M}}$ \Comment{Unsharping con dettagli amplificati}
@@ -386,14 +423,16 @@ Una tecnica molto semplice per rimuovere lo sfondo consiste nell'applicare una m
 
 Per superare queste limitazioni, è possibile applicare una trasformazione non lineare all'immagine, che enfatizza i dettagli e riduce il rumore. In questo progetto è stata utilizzata una trasformazione logistica, che comprime i valori dei pixel in un intervallo limitato, enfatizzando i dettagli e riducendo il rumore. L'algoritmo per la rimozione dello sfondo con trasformazione logistica è riportato nell'\cref{alg:remove_background}.
 
-\begin{algorithm}
-    \caption{\texttt{- Rimozione dello sfondo}:\\ Data un'immagine $I$, l'algoritmo restituisce l'immagine con lo sfondo rimosso $Out$.} \label{alg:remove_background}
+\begin{algorithm}[H]
+    \caption{\texttt{- Rimozione dello sfondo}:\\ Data un'immagine $I$ e i parametri $thr$ e $\alpha$, l'algoritmo restituisce l'immagine con lo sfondo rimosso $Out$.} \label{alg:remove_background}
     \begin{algorithmic}[1]
-        \Function{remove\_background}{$I, \text{threshold}, \alpha$}
-            \State $mask \gets I < \text{threshold}$ \Comment{Maschera per lo sfondo}
-            \State $smooth\_image \gets I$
-            \State $smooth\_image[mask] \gets I[mask] \times (1 / (1 + \exp(-\alpha \times (I[mask] - \text{threshold}))))$
-            \State \textbf{return} $smooth\_image$
+        \Function{remove\_background}{$I, thr, \alpha$}
+            \State $M \gets I < thr$ \Comment{Calcola la maschera dello sfondo}
+            \State $Out \gets I$
+            \For{ogni pixel $p$ in $M$ dove $M[p]=\text{True}$} 
+                \State $Out[p] \gets I[p] \times \dfrac{1}{1 + \exp(-\alpha \times (I[p] - thr))}$ \Comment{Trasformazione logistica}
+            \EndFor
+            \State \textbf{return} $Out$
         \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -550,5 +589,3 @@ Lo pseudocodice che racchiude questi passaggi è riportato nell'\cref{alg:shades
         \EndFunction
     \end{algorithmic}
 \end{algorithm}
-
-\cleardoublepage
