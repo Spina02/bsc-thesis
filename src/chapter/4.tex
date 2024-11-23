@@ -49,25 +49,27 @@ Le metriche senza riferimento valutano la qualità dell'immagine in maniera auto
 
 \subsection{NIQE} \label{subsec:niqe}
 
-\textbf{NIQE} (Naturalness Image Quality Evaluator) è una metrica di qualità delle immagini senza riferimento, sviluppata per valutare autonomamente la qualità delle immagini digitali, senza necessità di un'immagine di riferimento. NIQE è basata su un modello di percezione visiva umana, che valuta la qualità dell'immagine basandosi su caratteristiche statistiche e percettive, come la nitidezza, il contrasto, la luminosità e la presenza di artefatti \cite{niqe_paper}.
+\textbf{NIQE} (Naturalness Image Quality Evaluator) è una metrica di qualità delle immagini senza riferimento, sviluppata per valutare autonomamente la qualità delle immagini digitali, senza necessità di un'immagine di riferimento. NIQE è basata su un modello di percezione visiva umana, che valuta la qualità dell'immagine basandosi su caratteristiche statistiche e percettive, come la nitidezza, il contrasto, la luminosità e la presenza di artefatti \cite{niqe}.
 
-NIQE calcola la distanza tra le statistiche dell'immagine e quelle di un campione di immagini di riferimento, fornendo un punteggio di qualità che indica quanto l'immagine si discosti dalla media delle immagini di riferimento.
+NIQE calcola la distanza tra le statistiche dell'immagine e quelle di un campione di immagini di riferimento, fornendo un punteggio di qualità (generalmente tra 0 e 100) che indica quanto l'immagine si discosti dalla media delle immagini di riferimento. Punteggi più bassi indicano una qualità migliore.
 
-Nel progetto, NIQE è stata testata come possibile metrica di valutazione, ma ha mostrato limitazioni nel catturare miglioramenti specifici apportati dalle tecniche di elaborazione applicate alle immagini lunari. Ciò è probabilmente dovuto alla natura specifica delle immagini astronomiche, che possono differire significativamente dalle immagini di riferimento utilizzate per addestrare il modello.
+Nel progetto, NIQE è stata testata come possibile metrica di valutazione, ma ha mostrato limitazioni nel catturare miglioramenti specifici apportati dalle tecniche di elaborazione applicate alle immagini lunari. Ciò è probabilmente dovuto alla natura specifica delle immagini lunari, che possono differire significativamente dalle immagini di riferimento utilizzate per addestrare il modello.
 
 \subsection{BRISQUE} \label{subsec:brisque}
 
-\textbf{BRISQUE} (Blind Referenceless Image Spatial Quality Evaluator) è una metrica di qualità delle immagini senza riferimento, che utilizza caratteristiche statistiche naturali e un modello di regressione addestrato su un dataset di immagini distorte.
+\textbf{BRISQUE} (Blind Referenceless Image Spatial Quality Evaluator) è una metrica di qualità delle immagini senza riferimento che valuta le distorsioni naturali basandosi su modelli statistici delle scene naturali \cite{brisque}. A differenza di NIQE, BRISQUE utilizza un approccio di apprendimento supervisionato, addestrato su un ampio dataset di immagini con varie distorsioni.
 
-BRISQUE è basata su un modello di percezione visiva umana, che valuta la qualità dell'immagine basandosi su caratteristiche statistiche e percettive, come la nitidezza, il contrasto, la luminosità e la presenza di artefatti \cite{brisque_paper}.
+BRISQUE estrae caratteristiche statistiche dall'immagine, come la distribuzione dei coefficienti MSCN (Mean Subtracted Contrast Normalized), per catturare le deviazioni dalla naturalità statistica tipicamente presenti nelle immagini di alta qualità. Il modello produce un punteggio di qualità in una scala da 0 a 100, dove punteggi più bassi indicano una qualità migliore.
 
-Nel progetto, l'utilizzo di BRISQUE ha fornito risultati migliori rispetto a NIQE, ma ancora non pienamente soddisfacenti per valutare le immagini lunari elaborate.
+Nel contesto del progetto, BRISQUE ha dimostrato una maggiore sensibilità rispetto a NIQE nel rilevare miglioramenti nella qualità dell'immagine, ma ha presentato alcune limitazioni nell'analisi di immagini astronomiche, che differiscono significativamente dalle scene naturali su cui il modello è stato addestrato.
 
 \subsection{LIQE} \label{subsec:liqe}
 
-\textbf{LIQE} (Learning-based Image Quality Evaluator) è una metrica di qualità delle immagini senza riferimento basata su apprendimento automatico, che utilizza tecniche di \textit{deep learning} per valutare la qualità delle immagini \cite{liqe_paper}. LIQE combina informazioni statistiche a livello globale e locale ed è in grado di catturare in maniera più efficace le distorsioni presenti nelle immagini.
+\textbf{LIQE} (Learning-based Image Quality Evaluator) è una metrica di qualità delle immagini senza riferimento basata su tecniche di \textit{deep learning} avanzate \cite{liqe}. LIQE si distingue per la sua capacità di combinare efficacemente informazioni statistiche a livello sia globale che locale, permettendo una valutazione più accurata delle distorsioni presenti nelle immagini.
 
-Il modello assegna un punteggio che va da 1 a 5, dove 1 indica una qualità molto bassa e 5 una qualità molto alta. Questa scala è adottata nell'implementazione della libreria \texttt{PyIQA} utilizzata nel progetto.
+Il modello assegna un punteggio in una scala da 1 a 5, dove 1 indica una qualità molto bassa e 5 una qualità molto alta. Questa scala è adottata nell'implementazione della libreria \texttt{PyIQA} utilizzata nel progetto; altre implementazioni possono utilizzare scale diverse (generalmente 0-100).
+
+La caratteristica distintiva di LIQE rispetto a NIQE e BRISQUE è la sua architettura basata su reti neurali convoluzionali profonde, addestrate su un vasto dataset di immagini con varie distorsioni. Questo approccio rende LIQE particolarmente robusto e versatile nella valutazione di diverse tipologie di immagini, incluse quelle con caratteristiche non convenzionali come le immagini astronomiche.
 
 Rispetto a NIQE e BRISQUE, LIQE è stato progettato per essere più robusto e generale e può essere utilizzato per valutare una vasta gamma di immagini. LIQE è stato addestrato su un dataset di immagini distorte e utilizza una rete neurale convoluzionale per valutare autonomamente la qualità delle immagini.
 
