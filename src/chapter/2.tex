@@ -336,7 +336,7 @@ In questo progetto è stato utilizzato \textbf{DnCNN} (Denoising Convolutional N
     \centering
     \includegraphics[scale=0.3]{../assets/dncnn.png}
     \captionsetup{justification=centering}
-    \caption{Architettura di DnCNN \cite{dncnn_img}} \label{fig:dncnn}
+    \caption{Architettura di DnCNN \cite{dncnn_img}} \label{fig:dncnn_arch}
 \end{figure}
 
 La rete è addestrata per apprendere la mappatura residua $R(I) = I - I_{\text{denoised}}$, dove $I$ è l'immagine rumorosa e $I_{\text{denoised}}$ è l'immagine a cui è stato rimosso il rumore. Durante l'inferenza, la nuova immagine si ottiene sottraendo il rumore stimato dall'immagine di input:
