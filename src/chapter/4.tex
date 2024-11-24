@@ -318,12 +318,13 @@ Dall'analisi emerge che l'applicazione dell'Unsharp Mask ha permesso di enfatizz
 
 Combinando i risultati delle diverse fasi di elaborazione, si può valutare l'efficacia complessiva del processo sviluppato. Le immagini finali ottenute presentano un significativo miglioramento rispetto agli scatti originali, sia in termini di qualità percepita che secondo le metriche utilizzate.
 
+
 Dai risultati ottenuti (riportati nella \cref{fig:overall}), emerge che l'applicazione combinata delle tecniche di custom unsharp mask, stacking, aumento del contrasto e sharpening ha portato a un netto miglioramento nella qualità delle immagini lunari. 
 
 \begin{figure}[H]
     \centering
+    \includegraphics[width=0.8\linewidth]{../assets/overall.png}
     \caption{valore di LIQE con l'avanzare della pipeline di elaborazione}
-    \includegraphics[width=\linewidth]{../assets/overall.png}
     \label{fig:overall}
 \end{figure}
 
@@ -345,6 +346,25 @@ Dai risultati ottenuti (riportati nella \cref{fig:overall}), emerge che l'applic
     \end{subfigure}
     \caption{Impatto delle fasi di custom unsharp mask e stacking sulla qualità finale.}
     \label{fig:overall_no}
+\end{figure}
+
+Nella pagina seguente è riportato il confronto tra un'immagine presa dal dataset originale e l'immagine finale ottenuta dopo l'intera pipeline di elaborazione.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.8\textwidth}
+        \centering
+        \caption{Originale}
+        \includegraphics[width=\linewidth]{../assets/original.png}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.8\textwidth}
+        \centering
+        \caption{Finale}
+        \includegraphics[width=\linewidth]{../assets/output.png}
+    \end{subfigure}
+    \caption{Confronto tra immagine originale e finale.}
+    \label{fig:confronto-finale}
 \end{figure}
 
 \cleardoublepage
