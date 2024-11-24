@@ -314,23 +314,24 @@ Combinando i risultati delle diverse fasi di elaborazione, si può valutare l'ef
 
 Dai risultati ottenuti, emerge che l'applicazione combinata delle tecniche di custom unsharp mask, stacking, aumento del contrasto e sharpening ha portato a un netto miglioramento nella qualità delle immagini lunari. 
 
-È interessante notare che la tecniche che hanno mostrato il maggior impatto sulla qualità finale sono quelle di postprocessing, come l'aumento della nitidezza e del contrasto. A primo impatto potrebbe sembrare che fasi come il custom unsharp masking, o lo stacking abbiano un impatto minore sul risultato finale, ma è importante sottolineare che senza queste fasi, le tecniche di postprocessing non avrebbero potuto ottenere risultati altrettanto significativi (\cref{fig:overall_no_ush}).
+È interessante notare che la tecniche che hanno mostrato il maggior impatto sulla qualità finale sono quelle di postprocessing, come l'aumento della nitidezza e del contrasto. A primo impatto potrebbe sembrare che fasi come il custom unsharp masking, o lo stacking abbiano un impatto minore sul risultato finale, ma è importante sottolineare che senza queste fasi, le tecniche di postprocessing non avrebbero potuto ottenere risultati altrettanto significativi (\cref{fig:overall_no}).
 
 \begin{figure}[H]
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \caption{Pipeline senza custom unsharp mask}
         \includegraphics[width=\linewidth]{../assets/overall_no_ush.png}
-        \label{fig:overall_no_ush_niqe}
+        \label{fig:overall_no_ush}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \caption{Pipeline senza stacking}
         \includegraphics[width=\linewidth]{../assets/overall_no_stack.png}
-        \label{fig:overall_no_ush_brisque}
+        \label{fig:overall_no_stack}
     \end{subfigure}
     \caption{Impatto delle fasi di custom unsharp mask e stacking sulla qualità finale.}
+    \label{fig:overall_no}
 \end{figure}
 
 \cleardoublepage
