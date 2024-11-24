@@ -445,7 +445,7 @@ Possiamo ora descrivere l'algoritmo di Unsharp Masking personalizzato, basato su
         return sharpened_images
 \end{lstlisting}
 
-La funzione \texttt{custom\_unsharp\_mask} prende in input una lista di immagini \texttt{images}, il modello DnCNN \texttt{model} e i parametri per controllare il processo: \texttt{det\_str} regola l'intensità dell'amplificazione dei dettagli, \texttt{thr} definisce la soglia per distinguere aree di dettaglio da aree uniformi, e \texttt{dns\_str} indica l'intensità del denoising sul risultato. 
+La funzione \texttt{custom\_unsharp\_mask} prende in input una lista di immagini \texttt{images}, il modello DnCNN \texttt{model} e i parametri per controllare il processo: \texttt{det\_str} regola l'intensità dell'amplificazione dei dettagli, \texttt{thr} definisce la soglia per distinguere aree di dettaglio da aree uniformi e \texttt{dns\_str} indica l'intensità del denoising sul risultato. 
 
 Per ciascuna immagine, viene applicato il denoising tramite il modello DnCNN, viene poi calcolato il gradiente, da cui si ricavano due maschere che separano zone ad alto dettaglio da quelle più uniformi. La fase finale combina l'immagine originale con quella denoised utilizzando le maschere create, amplificando i dettagli nelle aree ad alto gradiente e privilegiando l'effetto del denoising nelle altre.
 
@@ -509,7 +509,7 @@ La funzione \texttt{calculate\_weights} per calcolare i pesi è riportata di seg
         return weights 
 \end{lstlisting}
 
-Le metriche disponibili includono la nitidezza \texttt{sharpness}, il contrasto \texttt{contrast}, e le metriche \texttt{BRISQUE} e \texttt{LIQE} di PyIqa. Tutte queste metriche vengono calcolate utilizzando le funzioni definite nel file \texttt{metrics.py}, non riportate per brevità.
+Le metriche disponibili includono la nitidezza \texttt{sharpness}, il contrasto \texttt{contrast} e le metriche \texttt{BRISQUE} e \texttt{LIQE} di PyIqa. Tutte queste metriche vengono calcolate utilizzando le funzioni definite nel file \texttt{metrics.py}, non riportate per brevità.
 
 Il metodo \texttt{median\_stack} implementa lo stacking per mediana, calcolando il valore mediano pixel per pixel delle immagini. Questo metodo è utile per ridurre l'effetto di outlier e rumore impulsivo.
 
@@ -701,7 +701,7 @@ Un ulteriore problema riguarda la valutazione dei risultati nella ricerca dei pa
 
 Come verrà illustrato nel \cref{chap:evaluation}, la metrica di valutazione maggiormente adottata nel contesto dell'astrofotografia è il rapporto segnale-rumore (SNR). Questa metrica, per essere calcolata, richiede la presenza di un'immagine di riferimento ideale a cui il programma deve tendere. Poiché le immagini sono state acquisite durante il progetto, non era disponibile un'immagine di riferimento ideale. È stato quindi tentato di utilizzare come riferimento un'immagine (scaricabile dai siti INAF o NASA) acquisita dal Lunar Reconnaissance Orbiter (LRO), un satellite in orbita intorno alla Luna. Questo satellite ha compiuto diversi scatti, da cui è stata elaborata l’immagine finale tramite la tecnica dello stitching. Tuttavia, ciò causa problemi di compatibilità con le immagini acquisite. Infatti, la foto di riferimento presenta, nelle aree periferiche della Luna, dettagli che non compaiono nelle immagini acquisite, rendendo impossibile l'allineamento. Sono state inoltre esplorate altre immagini di riferimento, ma quelle ad uso libero trovate su internet spesso non presentano una qualità superiore a quelle utilizzate nel progetto, rendendole quindi inadatte come riferimento “ideale”, oppure sono immagini delle cosiddette "mineral moon", risultanti dalla sovrapposizione di scatti ottenuti attraverso filtri di frequenza, con una colorazione artificiale che le rende non adatte al confronto.
 
-Una tecnica adottata comunemente per risolvere questo problema consiste nel prendere un'immagine di alta qualità e, da essa, generare diversi set di immagini con rumore aggiunto, in modo da simulare le condizioni reali. Questo metodo, chiamato \textit{data augmentation}, è stato adottato in diversi progetti di machine learning, e potrebbe essere una soluzione per questo progetto. Tuttavia, vista la mancanza di tempo e di risorse, non è stato possibile implementare questa soluzione, che si rimanda a sviluppi futuri.
+Una tecnica adottata comunemente per risolvere questo problema consiste nel prendere un'immagine di alta qualità e, da essa, generare diversi set di immagini con rumore aggiunto, in modo da simulare le condizioni reali. Questo metodo, chiamato \textit{data augmentation}, è stato adottato in diversi progetti di machine learning e potrebbe essere una soluzione per questo progetto. Tuttavia, vista la mancanza di tempo e di risorse, non è stato possibile implementare questa soluzione, che si rimanda a sviluppi futuri.
 
 Viste le difficoltà affrontate, è stato deciso di utilizzare delle metriche di valutazione senza riferimento, le quali però, come vedremo nel dettaglio nel prossimo capitolo, non sempre sono in grado di percepire il miglioramento effettivo della foto.
 

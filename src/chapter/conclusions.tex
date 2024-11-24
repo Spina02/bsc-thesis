@@ -1,19 +1,15 @@
-\chapter*{Conclusions}
+\chapter*{Conclusione}
 
 \addcontentsline{toc}{chapter}{Conclusions}
+In questa relazione è stato presentato lo sviluppo di un software per l'elaborazione di immagini lunari, combinando tecniche tradizionali di elaborazione delle immagini con approcci all'avanguardia basati sul \textit{deep learning}. Il progetto ha portato alla realizzazione di una pipeline completa e automatizzata che include la calibrazione delle immagini raw, l'allineamento automatico, la riduzione del rumore mediante DnCNN, l'aumento della nitidezza tramite un algoritmo di Unsharp Masking personalizzato e diversi metodi di stacking per la creazione di immagini finali di alta qualità.
 
+I risultati ottenuti dimostrano che la pipeline implementata è in grado di produrre immagini di elevata qualità, evidenziando dettagli altrimenti non visibili. In particolare, l'implementazione di un algoritmo di Unsharp Masking personalizzato, basato su DnCNN e maschere di gradiente, ha permesso di ottenere risultati significativamente migliori rispetto ai metodi tradizionali, preservando i dettagli significativi durante la riduzione del rumore.
 
-In questa relazione è stato presentato il progetto di sviluppo di un software per l'elaborazione di immagini lunari, combinando tecniche tradizionali di elaborazione delle immagini con approcci all'avanguardia basati sul deep learning.
+Le metriche di valutazione senza riferimento utilizzate, come LIQE, BRISQUE e NIQE, hanno mostrato una buona correlazione con la qualità percepita delle immagini. Tuttavia, sono emerse alcune limitazioni nella capacità di queste metriche di catturare miglioramenti specifici legati alle caratteristiche uniche delle immagini lunari. Nonostante ciò, le metriche hanno permesso di effettuare una valutazione quantitativa dei miglioramenti ottenuti nelle diverse fasi dell'elaborazione.
 
-I risultati ottenuti dimostrano che la pipeline implementata è in grado di produrre immagini di alta qualità, evidenziando dettagli altrimenti non visibili. In particolare, l'implementazione di un algoritmo di Unsharp Masking personalizzato, basato su DnCNN e maschere di gradiente, ha permesso di ottenere risultati significativamente migliori rispetto ai metodi tradizionali, preservando i dettagli significativi durante la riduzione del rumore.
+La combinazione delle tecniche di calibrazione, denoising avanzato, stacking ottimizzato e post-processing si è dimostrata efficace nel contesto del progetto. Le immagini finali ottenute presentano un significativo miglioramento rispetto agli scatti originali, sia in termini di qualità percepita che secondo le metriche utilizzate. Questo evidenzia come sia possibile ottenere risultati di qualità professionale anche utilizzando attrezzatura amatoriale, rendendo l'astrofotografia più accessibile.
 
-%! ----------------------------------------------- da integrare col resto -----------------------------------------------
-Le metriche utilizzate, pur essendo senza riferimento, hanno mostrato una buona correlazione con la qualità percepita delle immagini. Tuttavia, alcune limitazioni sono emerse, in particolare nella capacità delle metriche di catturare miglioramenti specifici legati alle caratteristiche uniche delle immagini lunari.
-
-Le tecniche di elaborazione implementate si sono dimostrate efficaci nel contesto del progetto. La combinazione di calibrazione, denoising avanzato, stacking ottimizzato e post-processing ha permesso di ottenere immagini di alta qualità, evidenziando dettagli altrimenti non visibili.
-%! ----------------------------------------------------------------------------------------------------------------------
-
-\textbf{Sviluppi futuri}
+\section*{Sviluppi futuri}
 
 Il progetto ha portato allo sviluppo di una pipeline completa per l'elaborazione delle immagini lunari, ottenendo risultati soddisfacenti. Attraverso l'analisi del lavoro svolto e dei risultati ottenuti, sono state identificate diverse aree chiave che potrebbero beneficiare di ulteriori sviluppi e miglioramenti:
 

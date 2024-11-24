@@ -2,7 +2,7 @@
 
 Questo capitolo presenta le metriche comunemente utilizzate in astrofotografia, nonché quelle impiegate in questo progetto per valutare la qualità delle immagini ottenute attraverso il processo di elaborazione descritto nei capitoli precedenti.
 
-La selezione delle metriche è fondamentale per stabilire criteri oggettivi di valutazione e per confrontare i risultati ottenuti con diverse configurazioni di parametri. Verranno discusse sia metriche con riferimento, che richiedono un'immagine ideale per il confronto, sia metriche senza riferimento, che valutano autonomamente la qualità dell'immagine
+La selezione delle metriche è fondamentale per stabilire criteri oggettivi di valutazione e per confrontare i risultati ottenuti con diverse configurazioni di parametri. Verranno discusse sia metriche con riferimento, che richiedono un'immagine ideale per il confronto, sia metriche senza riferimento, che valutano autonomamente la qualità dell'immagine.
 
 Successivamente, verranno presentati i risultati ottenuti e analizzati i miglioramenti introdotti dalle varie tecniche di elaborazione delle immagini.
 
@@ -91,7 +91,7 @@ Nel contesto del progetto, BRISQUE ha dimostrato una maggiore sensibilità rispe
 
 \subsection{LIQE} \label{subsec:liqe}
 
-\textbf{LIQE} (Learning-based Image Qu  ality Evaluator) è una metrica di qualità delle immagini senza riferimento basata su tecniche di \textit{deep learning} avanzate \cite{liqe}. Si distingue per la sua capacità di combinare efficacemente informazioni statistiche a livello sia globale che locale, permettendo una valutazione più accurata delle distorsioni presenti nelle immagini.
+\textbf{LIQE} (Learning-based Image Quality Evaluator) è una metrica di qualità delle immagini senza riferimento basata su tecniche di \textit{deep learning} avanzate \cite{liqe}. Si distingue per la sua capacità di combinare efficacemente informazioni statistiche a livello sia globale che locale, permettendo una valutazione più accurata delle distorsioni presenti nelle immagini.
 
 Il modello assegna un punteggio in una scala da 1 a 5, dove 1 indica una qualità molto bassa e 5 una qualità molto alta. Si noti che questa scala è adottata nell'implementazione della libreria \texttt{PyIQA}, altre implementazioni potrebbero utilizzare scale diverse (generalmente 0-100).
 
@@ -105,13 +105,13 @@ Dopo aver valutato i risultati ottenuti, è emerso che \textbf{LIQE risulta la m
 
 Durante lo sviluppo, è emerso che metriche come NIQE e BRISQUE non sempre riflettevano accuratamente la percezione umana della qualità delle immagini. Ad esempio, in alcuni casi, un'immagine che visivamente appariva migliorata presentava un punteggio peggiore secondo queste metriche. LIQE, invece, ha mostrato una maggiore correlazione con la qualità percepita.
 
-È importante notare che LIQE non è progettato per valutare immagini astronomiche. Il modello (normalizzato tra 1 e 5), assegna valori che si aggirano intorno a 2, indicando una qualità molto bassa. Probabilmente ciò è dovuto al fatto che il modello è stato addestrato su un dataset di immagini a colori, mentre la Luna è pressocché monocromatica. Tuttavia si può notare che a miglioramenti visivi delle immagini corrispondevano incrementi nei punteggi LIQE, e viceversa.
+È importante notare che LIQE non è progettato per valutare immagini astronomiche. Il modello (normalizzato tra 1 e 5), assegna valori che si aggirano intorno a 2, indicando una qualità molto bassa. Probabilmente ciò è dovuto al fatto che il modello è stato addestrato su un dataset di immagini a colori, mentre la Luna è pressocché monocromatica. Tuttavia si può notare che a miglioramenti visivi delle immagini corrispondevano incrementi nei punteggi LIQE e viceversa.
 
 \section{Analisi e miglioramenti ottenuti} \label{sec:analysis}
 
 In questa sezione vengono analizzati i risultati ottenuti attraverso l'applicazione delle diverse tecniche di elaborazione descritte nei capitoli precedenti. L'obiettivo è valutare l'efficacia di ciascuna fase del processo nel migliorare la qualità delle immagini lunari, utilizzando le metriche di valutazione senza riferimento discusse nel \cref{chap:evaluation}. Verranno presentati grafici, tabelle e immagini illustrative per supportare l'analisi e facilitare il confronto tra i vari metodi.
 
-Nell'analisi dei grafici si ricorda che le metriche NIQE e BRISQUE assegnano punteggi su una scala da 0 a 10, im modo che valori più bassi corrispondano a immagini di qualità migliore. LIQE, al contrario, assegna punteggi in una scala da 1 a 5, dove valori più alti corrispondono a immagini di qualità superiore.
+Nell'analisi dei grafici si ricorda che le metriche NIQE e BRISQUE assegnano punteggi su una scala da 0 a 10, in modo che valori più bassi corrispondano a immagini di qualità migliore. LIQE, al contrario, assegna punteggi in una scala da 1 a 5, dove valori più alti corrispondono a immagini di qualità superiore.
 
 \subsection{Effetti della calibrazione} \label{subsec:analysis_cal}
 
@@ -187,7 +187,7 @@ la \cref{fig:confronto-filtri} mostra un confronto tra le immagini ottenute appl
     \item DnCNN (Deep Learning) riduce il rumore in modo efficace mantenendo una buona nitidezza complessiva. Tuttavia, può introdurre una texture artificiale che risulta meno naturale rispetto agli altri filtri. Le strutture principali rimangono ben visibili, ma alcune sfumature possono sembrare meno realistiche.
 \end{itemize}
 
-La caratteristica innaturale di DnCNN svanisce poi con l'applicazione dell'algoritmo di unsarp masking personalizzato, che, integrando il risultato con l'immagine di partenza, permette di mantenere la nitidezza e la naturalezza dell'immagine.
+La caratteristica innaturale di DnCNN svanisce poi con l'applicazione dell'algoritmo di unsharp mask personalizzato, che, integrando il risultato con l'immagine di partenza, permette di mantenere la nitidezza e la naturalezza dell'immagine.
 
 La \cref{fig:confronto-denoising} mostra i risultati ottenuti utilizzando ciascun metodo all'interno della funzione \texttt{custom\_unsharp\_mask} illustrata nella \cref{subsec:preprocessing_impl}. I punteggi delle metriche di qualità NIQE, BRISQUE e LIQE sono stati calcolati per ciascuna immagine dopo l'applicazione dell'intera pipeline di elaborazione.
 
@@ -222,7 +222,7 @@ Dai risultati ottenuti, possiamo notare che secondo la metrica NIQE i diversi me
 
 \subsection{Benefici dello stacking} \label{subsec:analysis_stack}
 
-Ormai è notoche lo stacking delle immagini consente di migliorare il rapporto segnale-rumore combinando più scatti dello stesso soggetto. Nell'ambito di questo progetto sono stati testati diversi i metodi di stacking presentati nella \cref{subsec:stacking} e implementati nella \cref{subsec:stacking_impl}, di seguito confrontati attraverso le metriche di qualità NIQE, BRISQUE e LIQE.
+Ormai è noto che lo stacking delle immagini consente di migliorare il rapporto segnale-rumore combinando più scatti dello stesso soggetto. Nell'ambito di questo progetto sono stati testati diversi i metodi di stacking presentati nella \cref{subsec:stacking} e implementati nella \cref{subsec:stacking_impl}, di seguito confrontati attraverso le metriche di qualità NIQE, BRISQUE e LIQE.
 
 \begin{figure}[H]
     \centering
@@ -250,7 +250,7 @@ Ormai è notoche lo stacking delle immagini consente di migliorare il rapporto s
     \label{fig:confronto-stacking}
 \end{figure}
 
-Da questi risultati si evinche che la metrica BRISQUE non ha mostrato differenze significative tra i diversi metodi di stacking, con punteggi medi intorno a 24. NIQE ha mostrato una maggiore variabilità tra i metodi, con punteggi più alti (peggiori) per lo stacking mediano e inferiori (migliori) per il metodo con la media pesata, indipendentemente dai criteri di assegnazione dei pesi. Anche LIQE, come BRISQUE, ha mostrato punteggi simili tra i diversi metodi di stacking, con valori che si aggirano intorno a 2.06 per i vari metodi, tranne per la media pesata mediante nitidezza che ha un punteggio di poco superiore agli altri: 2.08.
+Da questi risultati si evince che la metrica BRISQUE non ha mostrato differenze significative tra i diversi metodi di stacking, con punteggi medi intorno a 24. NIQE ha mostrato una maggiore variabilità tra i metodi, con punteggi più alti (peggiori) per lo stacking mediano e inferiori (migliori) per il metodo con la media pesata, indipendentemente dai criteri di assegnazione dei pesi. Anche LIQE, come BRISQUE, ha mostrato punteggi simili tra i diversi metodi di stacking, con valori che si aggirano intorno a 2.06 per i vari metodi, tranne per la media pesata mediante nitidezza che ha un punteggio di poco superiore agli altri: 2.08.
 
 Si vuole far notare che LIQE agisce su una scala nettamente diversa dalle altre due metriche, per cui punteggi con variabilità minore possono nascondere differenze più significative.
 
@@ -293,7 +293,7 @@ I risultati evidenziano che l'incremento del numero di immagini porta a un netto
 
 \subsection{Miglioramenti con sharpening e contrasto} \label{subsec:analysis_post}
 
-L'applicazione di tecniche di post-processing, come l'aumento della nitidezza tramite Unsharp Mask e il miglioramento del contrasto con CLAHE, sono quelle che in termini di qualità percepita apportano i miglioramenti più evidenti. In questa sezione si analizzano gli effetti di queste tecniche sulle immagini lunari elaborate.
+L'applicazione di tecniche di post-processing, come l'aumento della nitidezza tramite unsharp mask e il miglioramento del contrasto con CLAHE, sono quelle che in termini di qualità percepita apportano i miglioramenti più evidenti. In questa sezione si analizzano gli effetti di queste tecniche sulle immagini lunari elaborate.
 
 \begin{figure}[H]
     \centering
@@ -312,7 +312,7 @@ L'applicazione di tecniche di post-processing, come l'aumento della nitidezza tr
     \label{fig:confronto-post}
 \end{figure}
 
-Dall'analisi emerge che l'applicazione dell'Unsharp Mask ha permesso di enfatizzare i dettagli superficiali della Luna, migliorando la nitidezza percepita. Il miglioramento del contrasto con CLAHE ha reso più visibili le variazioni tonali, contribuendo a una maggiore profondità dell'immagine.
+Dall'analisi emerge che l'applicazione dell'unsharp mask ha permesso di enfatizzare i dettagli superficiali della Luna, migliorando la nitidezza percepita. Il miglioramento del contrasto con CLAHE ha reso più visibili le variazioni tonali, contribuendo a una maggiore profondità dell'immagine.
 
 \subsection{Analisi complessiva e discussione finale}
 
@@ -324,11 +324,11 @@ Dai risultati ottenuti (riportati nella \cref{fig:overall}), emerge che l'applic
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{../assets/overall.png}
-    \caption{valore di LIQE con l'avanzare della pipeline di elaborazione}
+    \caption{Valore di LIQE con l'avanzare della pipeline di elaborazione}
     \label{fig:overall}
 \end{figure}
 
-È interessante notare che la tecniche che hanno mostrato il maggior impatto sulla qualità finale sono quelle di postprocessing, come l'aumento della nitidezza e del contrasto. A primo impatto potrebbe sembrare che fasi come il custom unsharp masking, o lo stacking abbiano un impatto minore sul risultato finale, ma è importante sottolineare che senza queste fasi, le tecniche di postprocessing non avrebbero potuto ottenere risultati altrettanto significativi (\cref{fig:overall_no}).
+È interessante notare che le tecniche che hanno mostrato il maggior impatto sulla qualità finale sono quelle di postprocessing, come l'aumento della nitidezza e del contrasto. A primo impatto potrebbe sembrare che fasi come il custom unsharp mask o lo stacking abbiano un impatto minore sul risultato finale, ma è importante sottolineare che senza queste fasi, le tecniche di postprocessing non avrebbero potuto ottenere risultati altrettanto significativi (\cref{fig:overall_no}).
 
 \begin{figure}[H]
     \begin{subfigure}[t]{0.49\textwidth}
