@@ -137,7 +137,7 @@ Nella funzione \texttt{calibrate\_single\_image}, si procede alla calibrazione d
 
 \subsection{Allineamento} \label{subsec:alignment_impl}
 
-La fase di allineamento delle immagini è stata implementata nel file \texttt{align.py}. Qui sono definite le funzioni necessarie per allineare le immagini utilizzando algoritmi di \textit{feature detection} e \textit{feature matching} come ORB, SIFT e SURF, e RANSAC per il calcolo della trasformazione omografica, come già affrontatp nella \cref{subsec:feature_detection}. L'allineamento è fondamentale per compensare eventuali spostamenti o rotazioni tra gli scatti, garantendo una sovrapposizione precisa delle immagini durante la fase di \textit{stacking}.
+La fase di allineamento delle immagini è stata implementata nel file \texttt{align.py}. Qui sono definite le funzioni necessarie per allineare le immagini utilizzando algoritmi di \textit{feature detection} e \textit{feature matching} come ORB, SIFT e SURF, e RANSAC per il calcolo della trasformazione omografica, come già affrontato nella \cref{subsec:feature_detection}. L'allineamento è fondamentale per compensare eventuali spostamenti o rotazioni tra gli scatti, garantendo una sovrapposizione precisa delle immagini durante la fase di \textit{stacking}.
 
 Per migliorare i risultati dell'allineamento, le immagini passano prima attraverso una funzione di pre-processing che ne ottimizza la qualità prima dell'estrazione delle feature. Questa funzione è stata implementata nel file \texttt{enhancement.py} e svolge essenzialmente tre compiti:
 

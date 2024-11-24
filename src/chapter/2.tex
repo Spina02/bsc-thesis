@@ -61,9 +61,9 @@ $$
 
 \subsection{Flat Frames} \label{subsec:flat}
 
-I \textbf{flat frames} sono scatti acquisiti fotografando una sorgente di luce uniforme, come un cielo crepuscolare o un pannello luminoso. Vengono acquisiti con lo stesso tempo di esposizione e ISO dei light frames, ma con l'otturatore aperto. Questi frame catturano le variazioni nella risposta dei pixel del sensore e il \textbf{rumoe di vignettatura} introdotto dal sistema ottico, ovvero la diminuzione dell'illuminazione verso i bordi dell'immagine.
+I \textbf{flat frames} sono scatti acquisiti fotografando una sorgente di luce uniforme, come un cielo crepuscolare o un pannello luminoso. Vengono acquisiti con lo stesso tempo di esposizione e ISO dei light frames, ma con l'otturatore aperto. Questi frame catturano le variazioni nella risposta dei pixel del sensore e il \textbf{rumore di vignettatura} introdotto dal sistema ottico, ovvero la diminuzione dell'illuminazione verso i bordi dell'immagine.
 
-Per correggere queste imperfezioni si calcula un \textbf{master flat} combinando i diversi flat frames, solitamente attraverso la media. Prima di calcolare il master flat, è necessario sottrarre sia il master bias che il master dark dai flat frames. Una volta calcolato il master flat, questo viene normalizzato dividendolo per il valore medio dei suoi pixel. Il master flat viene poi utilizzato per normalizzare le immagini scientifiche, dividendo ogni pixel dell'immagine per il corrispondente valore nel master flat.
+Per correggere queste imperfezioni si calcola un \textbf{master flat} combinando i diversi flat frames, solitamente attraverso la media. Prima di calcolare il master flat, è necessario sottrarre sia il master bias che il master dark dai flat frames. Una volta calcolato il master flat, questo viene normalizzato dividendolo per il valore medio dei suoi pixel. Il master flat viene poi utilizzato per normalizzare le immagini scientifiche, dividendo ogni pixel dell'immagine per il corrispondente valore nel master flat.
 
 \begin{algorithm}[H]
     \caption{\texttt{- Calcolo del Master Flat}:\\ Data la lista di flat frames $F_f$, il master bias $M_b$ e il master dark $M_d$, l'algoritmo calcola il master flat normalizzato $M_f$.} \label{alg:flat}

@@ -295,15 +295,30 @@ I risultati evidenziano che l'incremento del numero di immagini porta a un netto
 
 L'applicazione di tecniche di post-processing, come l'aumento della nitidezza tramite Unsharp Mask e il miglioramento del contrasto con CLAHE, sono quelle che in termini di qualità percepita apportano i miglioramenti più evidenti. In questa sezione si analizzano gli effetti di queste tecniche sulle immagini lunari elaborate.
 
-% [Inserire immagini che mostrano le differenze prima e dopo l'applicazione delle tecniche di post-processing]
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \caption{Prima}
+        \includegraphics[width=\linewidth]{../assets/stacked.png}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\textwidth}
+        \centering
+        \caption{Dopo}
+        \includegraphics[width=\linewidth]{../assets/unsharped.png}
+    \end{subfigure}
+    \caption{Confronto tra immagini prima e dopo il postprocessamento.}
+    \label{fig:confronto-post}
+\end{figure}
 
 Dall'analisi emerge che l'applicazione dell'Unsharp Mask ha permesso di enfatizzare i dettagli superficiali della Luna, migliorando la nitidezza percepita. Il miglioramento del contrasto con CLAHE ha reso più visibili le variazioni tonali, contribuendo a una maggiore profondità dell'immagine.
-
-Le metriche di qualità riflettono questi miglioramenti, con punteggi più elevati nelle immagini post-processate.
 
 \subsection{Analisi complessiva e discussione finale}
 
 Combinando i risultati delle diverse fasi di elaborazione, si può valutare l'efficacia complessiva del processo sviluppato. Le immagini finali ottenute presentano un significativo miglioramento rispetto agli scatti originali, sia in termini di qualità percepita che secondo le metriche utilizzate.
+
+Dai risultati ottenuti (riportati nella \cref{fig:overall}), emerge che l'applicazione combinata delle tecniche di custom unsharp mask, stacking, aumento del contrasto e sharpening ha portato a un netto miglioramento nella qualità delle immagini lunari. 
 
 \begin{figure}[H]
     \centering
@@ -311,8 +326,6 @@ Combinando i risultati delle diverse fasi di elaborazione, si può valutare l'ef
     \includegraphics[width=\linewidth]{../assets/overall.png}
     \label{fig:overall}
 \end{figure}
-
-Dai risultati ottenuti, emerge che l'applicazione combinata delle tecniche di custom unsharp mask, stacking, aumento del contrasto e sharpening ha portato a un netto miglioramento nella qualità delle immagini lunari. 
 
 È interessante notare che la tecniche che hanno mostrato il maggior impatto sulla qualità finale sono quelle di postprocessing, come l'aumento della nitidezza e del contrasto. A primo impatto potrebbe sembrare che fasi come il custom unsharp masking, o lo stacking abbiano un impatto minore sul risultato finale, ma è importante sottolineare che senza queste fasi, le tecniche di postprocessing non avrebbero potuto ottenere risultati altrettanto significativi (\cref{fig:overall_no}).
 
