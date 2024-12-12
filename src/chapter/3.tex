@@ -46,10 +46,10 @@ La pipeline di elaborazione completa è stata implementata nel file \texttt{proc
     def process_images(images=None, params={}):
         det_str    = params.get('det_str',    1.3)
         grad_thr   = params.get('grad_thr',   0.008)
-        dns_str    = params.get('dns_str',    1.2)
+        dns_str    = params.get('dns_str',    0.9)
         stack_alg  = params.get('stack_alg',  'weighted_avg')
         avg_alg    = params.get('avg_alg',    'sharpness')
-        ush_str    = params.get('ush_str',    2.35)
+        ush_str    = params.get('ush_str',    1.8)
         tile_size  = params.get('tile_size',  (19, 19))
         clip_limit = params.get('clip_limit', 0.8)
 
@@ -154,7 +154,7 @@ Inoltre, poiché gli algoritmi di OpenCV richiedono immagini in formato a 8 bit,
 L'implementazione dell'algoritmo è riportata di seguito, mentre le implementazioni di \texttt{soft\_threshold} e \texttt{enhance\_contrast}  sono riportate nella \cref{subsec:preprocessing_impl}.
 
 \begin{lstlisting}[label={lst:pre_align_enhance}]
-    def pre_align_enhance(image, clip_limit = 0.8, tile_grid_size = (20,20), thr = 0.05):
+    def pre_align_enhance(image, clip_limit = 0.8, tile_grid_size = (19,19), thr = 0.05):
         # Convert image to grayscale
         enhanced = image.copy()
         if len(image.shape) == 3:
@@ -403,7 +403,7 @@ Come è possibile notare, il denoising viene eseguito solo sul canale L dell'imm
 Possiamo ora descrivere l'algoritmo di Unsharp Masking personalizzato, basato sull'\cref{alg:custom_unsharp}, che è stato implementato nella funzione \texttt{custom\_unsharp\_mask}. Questa implementazione combina il denoising tramite DnCNN con una maschera basata sul gradiente dell'immagine per preservare i dettagli importanti.
 
 \begin{lstlisting}[label={lst:unsharp_mask}]
-    def custom_unsharp_mask(images, model, det_str=1.3, thr=0.09, dns_str=1.2):
+    def custom_unsharp_mask(images, model, det_str=1.2, thr=0.08, dns_str=0.9):
         sharpened_images = []
 
         for idx, image in enumerate(images):
@@ -585,7 +585,7 @@ Per migliorare il contrasto locale e rendere più visibili le variazioni tonali 
 L'implementazione è stata realizzata nella funzione \texttt{enhance\_contrast}.
 
 \begin{lstlisting}[label={lst:clache}]
-    def enhance_contrast(image, clip_limit = 0.07, tile_size = (20, 20)):
+    def enhance_contrast(image, clip_limit = 0.08, tile_size = (19, 19)):
         if len(image.shape) < 3: image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
 
         # Convert the image to LAB color space
